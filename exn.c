@@ -102,7 +102,7 @@ attachwindow(Monitor* m, Window w) {
 
     Client *c, *find;
 
-    c = (Client *)calloc(1, sizeof(Client));
+    c = (Client *)malloc(sizeof(Client));
     c->win = w;
     c->next = NULL;
     c->parent = m;
