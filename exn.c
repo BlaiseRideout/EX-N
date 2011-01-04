@@ -124,6 +124,9 @@ attachwindow(Monitor* m, Window w) {
 void
 cyclewin(const Arg *arg) {
 
+    if (!mons[selmon].current)
+        return;
+
     if (arg->i > 0) {
         if(mons[selmon].current->next)
             mons[selmon].current = mons[selmon].current->next;
@@ -136,7 +139,7 @@ cyclewin(const Arg *arg) {
         else
             mons[selmon].current = mons[selmon].last;
     }
-   
+
     refocus();
 }
 
