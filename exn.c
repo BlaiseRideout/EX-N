@@ -1,4 +1,4 @@
-/* EXN is written by John Anthony <john_anthony@lavabit.com>, 2010.
+/* EXN is written by John Anthony <john_anthony@kingkill.com>, 2010.
  *
  * This software is in the public domain
  * and is provided AS IS, with NO WARRANTY.
@@ -22,8 +22,8 @@
 
 /* Macros */
 #define CLEANMASK(mask)         (mask & ~(numlockmask|LockMask))
-#define LENGTH(X)       (sizeof X / sizeof X[0])
-#define MAX(a, b)       ((a) > (b) ? (a) : (b))
+#define LENGTH(X)               (sizeof X / sizeof X[0])
+#define MAX(a, b)               ((a) > (b) ? (a) : (b))
 
 #define NUMMONS         2
 
@@ -35,16 +35,18 @@ typedef union {
     const void *v;
 } Arg; 
 
+typedef struct Monitor Monitor;
 typedef struct Client Client;
 struct Client{
     Window win;
+    Monitor *parent;
     Client *prev, *next;
 };
 
-typedef struct{
+struct Monitor{
     int x, y, w, h;
     Client *first, *last, *current;
-} Monitor;
+};
 
 typedef struct {
     unsigned int mod;
@@ -58,7 +60,9 @@ static void attachwindow(Monitor *m, Window w);
 static void configurerequest(XEvent *e);
 static void cyclewin(const Arg *arg);
 static void destroynotify(XEvent *e);
-static void detachwindow(Monitor *m, Window w);
+static void detachwindow(Window w);
+static Client* findclient(Window w);
+/* static Monitor* findparent(Client *c); */
 static void focusin(XEvent *e);
 static void grabkeys(void);
 static void initmons(void);
@@ -117,6 +121,7 @@ attachwindow(Monitor* m, Window w) {
     c = (Client *)calloc(1, sizeof(Client));
     c->win = w;
     c->next = NULL;
+    c->parent = m;
 
     if (!m->first) {
         m->first = c;
@@ -159,38 +164,68 @@ cyclewin(const Arg *arg) {
 void
 destroynotify(XEvent *e) {
     XDestroyWindowEvent *ev = &e->xdestroywindow;
-    detachwindow(&mons[selmon], ev->window);
+    Window w = ev->window;
+    Client *c = findclient(w);
 
-    //Logic for removing old client (dealloc)
-    //
-    //
-
+    if (c) {
+        detachwindow(c->win);
+        free(c);
+    }
+    
     refocus();
 }
 
 void
-detachwindow(Monitor* m, Window w) {
-    Client *tcli;
+detachwindow(Window w) {
+    Client *c = findclient(w);
+    Monitor *m = c->parent;
 
-    for (tcli = m->first; tcli->win != w && tcli != NULL; tcli = tcli->next);
-
-    if (!tcli)
+    if (!c)
         return;
 
-    if (tcli->next)
-        tcli->next->prev = tcli->prev;
+    if (c->next)
+        c->next->prev = c->prev;
     else                                /* Deal with the eventuality that it could be the last in the list */
-        m->last = tcli->prev;
+        m->last = c->prev;
 
-    if (tcli->prev) {
-        m->current = tcli->prev;
-        tcli->prev->next = tcli->next;
+    if (c->prev) {
+        m->current = c->prev;
+        c->prev->next = c->next;
     }
     else {                               /* Deal with the eventuality of it being the first in the list */
-        m->first = tcli->next;
+        m->first = c->next;
         m->current = m->first;
     }
 }
+
+Client *
+findclient(Window w) {
+    unsigned int i;
+    Client *c;
+
+    for (i = 0; i < NUMMONS; i++) {
+        for (c = mons[i].first; c; c = c->next) {
+            if (c->win == w)
+                return c;
+        }
+    }
+    return NULL;
+}
+
+/* Monitor * */
+/* findparent(Client *c) { */
+/*     unsigned int i; */
+/*     Client *cc; */
+/*  */
+/*     for (i = 0; i < NUMMONS; i++) { */
+/*         for (cc = mons[i].first; cc; cc = cc->next) { */
+/*             if (cc == c) */
+/*                 return &mons[i]; */
+/*         } */
+/*     } */
+/*     return NULL; */
+/*  */
+/* } */
 
 void
 focusin(XEvent *e) { /* there are some broken focus acquiring clients */
@@ -281,7 +316,7 @@ monmove(const Arg *arg) {
     monfoc(arg);
     new = &mons[selmon];
     if (new != old) {
-        detachwindow(old, w);
+        detachwindow(w);
         attachwindow(new, w);
         XMoveResizeWindow(dpy, w, mons[selmon].x, mons[selmon].y, mons[selmon].w, mons[selmon].h);
         refocus();
@@ -302,6 +337,10 @@ monfoc(const Arg *arg) {
 
 void
 refocus(void) {
+    /* Safety */
+    if (!mons[selmon].current)
+        mons[selmon].current = mons[selmon].first;
+
     if (mons[selmon].current) {
         XSetInputFocus(dpy, mons[selmon].current->win, RevertToPointerRoot, CurrentTime);
         XRaiseWindow(dpy, mons[selmon].current->win);

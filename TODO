@@ -1,0 +1,8 @@
+> Change monitor setup from being hard-coded to detected
+> Begin properly applying Atoms
+> Deal with small menu windows correctly (and stop those annoying BadWindow crashes)
+> Create an on-screen display clock
+> Create an on-screen display window list
+> Apply on-screen display as long as MODKEY is held down
+> Break config file stuff into a dwm-like separate config.h
+> Fix the "killclient" function (requires proper implementation of atoms)
