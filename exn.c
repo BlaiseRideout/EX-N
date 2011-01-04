@@ -25,8 +25,6 @@
 #define LENGTH(X)               (sizeof X / sizeof X[0])
 #define MAX(a, b)               ((a) > (b) ? (a) : (b))
 
-#define NUMMONS         2
-
 /* Datatypes */
 typedef union {
     int i;
@@ -45,6 +43,7 @@ struct Client{
 
 struct Monitor{
     int x, y, w, h;
+    Monitor *mnext, *mprev;
     Client *first, *last, *current;
 };
 
@@ -75,7 +74,6 @@ static void updatenumlockmask(void);
 
 /* Variables */
 static unsigned int numlockmask = 0;
-static int selmon = 1;
 static void (*handler[LASTEvent]) (XEvent *) = {
 /*     [ButtonPress] = XXXXX, */
 /*     [ClientMessage] = XXXXX, */
@@ -93,7 +91,7 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 };
 static Bool running = True;
 static Display *dpy;
-static Monitor mons[NUMMONS];
+static Monitor *firstmon, *selmon;
 static Window root;
 
 /* Config file goes here */
@@ -128,20 +126,20 @@ attachwindow(Monitor* m, Window w) {
 void
 cyclewin(const Arg *arg) {
 
-    if (!mons[selmon].current)
+    if (selmon->current)
         return;
 
     if (arg->i > 0) {
-        if(mons[selmon].current->next)
-            mons[selmon].current = mons[selmon].current->next;
+        if(selmon->current->next)
+            selmon->current = selmon->current->next;
         else
-            mons[selmon].current = mons[selmon].first;
+            selmon->current = selmon->first;
     }
     else {
-        if(mons[selmon].current->prev)
-            mons[selmon].current = mons[selmon].current->prev;
+        if(selmon->current->prev)
+            selmon->current = selmon->current->prev;
         else
-            mons[selmon].current = mons[selmon].last;
+            selmon->current = selmon->last;
     }
 
     refocus();
@@ -196,11 +194,11 @@ die(const char *errstr, ...) {
 
 Client *
 findclient(Window w) {
-    unsigned int i;
     Client *c;
+    Monitor *m;
 
-    for (i = 0; i < NUMMONS; i++) {
-        for (c = mons[i].first; c; c = c->next) {
+    for (m = firstmon; m; m = m->mnext) {
+        for (c = m->first; c; c = c->next) {
             if (c->win == w)
                 return c;
         }
@@ -227,22 +225,30 @@ grabkeys(void) {
 void
 initmons(void) {    /* Needs to be generalised using Xinerama */
 
-    mons[0].x = 0;
-    mons[0].y = 0;
-    mons[0].w = 1280;
-    mons[0].h = 1024;
-    mons[1].x = 1280;
-    mons[1].y = 0;
-    mons[1].w = 1920;
-    mons[1].h = 1080;
+    firstmon = (Monitor*)malloc(sizeof(Monitor));
+    firstmon->mnext = (Monitor*)malloc(sizeof(Monitor));
 
-    mons[0].first = NULL;
-    mons[0].last = NULL;
-    mons[0].current = NULL;
+    firstmon->x = 0;
+    firstmon->y = 0;
+    firstmon->w = 1280;
+    firstmon->h = 1024;
+    firstmon->first = NULL;
+    firstmon->last = NULL;
+    firstmon->current = NULL;
 
-    mons[1].first = NULL;
-    mons[1].last = NULL;
-    mons[1].current = NULL;
+    firstmon->mnext->x = 1280;
+    firstmon->mnext->y = 0;
+    firstmon->mnext->w = 1920;
+    firstmon->mnext->h = 1080;
+    firstmon->mnext->first = NULL;
+    firstmon->mnext->last = NULL;
+    firstmon->mnext->current = NULL;
+
+    firstmon->mnext->mprev = firstmon;
+    firstmon->mprev = NULL;
+    firstmon->mnext->mnext = NULL;
+
+    selmon = firstmon;
 }
 
 void
@@ -264,12 +270,12 @@ keypress(XEvent *e) {
 void
 killclient(const Arg *arg) {
 
-    if (!mons[selmon].current)
+    if (!selmon->current)
         return;
 
     /* OUT OF ACTION until window atoms are set up correctly! */
 
-    /* Window w = mons[selmon].current->win; */
+    /* Window w = selmon->current->win; */
 
     /* detachwindow(&mons[selmon], w); */
     /* refocus(); */
@@ -279,46 +285,51 @@ killclient(const Arg *arg) {
 void
 mapnotify(XEvent *e) {
     Window w = e->xmap.window;
-    attachwindow(&mons[selmon], w);
-    XMoveResizeWindow(dpy, w, mons[selmon].x, mons[selmon].y, mons[selmon].w, mons[selmon].h);
+    attachwindow(selmon, w);
+    XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h);
     refocus();
 }
 
 void
 monmove(const Arg *arg) {
 
-    Window w = mons[selmon].current->win;
-    Monitor *new, *old = &mons[selmon];
+    Window w = selmon->current->win;
+    Monitor *new, *old = selmon;
     monfoc(arg);
-    new = &mons[selmon];
+    new = selmon;
     if (new != old) {
         detachwindow(w);
         attachwindow(new, w);
-        XMoveResizeWindow(dpy, w, mons[selmon].x, mons[selmon].y, mons[selmon].w, mons[selmon].h);
+        XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h);
         refocus();
     }
 }
 
 void
 monfoc(const Arg *arg) {
-    int n = selmon + arg->i;
-    if (n >= 0 && n < NUMMONS) {
-        selmon = n;
-        if (mons[selmon].current){
+
+    Monitor *moveto;
+    if (arg->i > 0)
+        moveto = selmon->mnext;
+    else
+        moveto = selmon->mprev;
+
+    if (moveto) {
+        selmon = moveto;
+        if (selmon->current)
             refocus();
-        }
     }
 }
 
 void
 refocus(void) {
     /* Safety */
-    if (!mons[selmon].current)
-        mons[selmon].current = mons[selmon].first;
+    if (!selmon->current)
+        selmon->current = selmon->first;
 
-    if (mons[selmon].current) {
-        XSetInputFocus(dpy, mons[selmon].current->win, RevertToPointerRoot, CurrentTime);
-        XRaiseWindow(dpy, mons[selmon].current->win);
+    if (selmon->current) {
+        XSetInputFocus(dpy, selmon->current->win, RevertToPointerRoot, CurrentTime);
+        XRaiseWindow(dpy, selmon->current->win);
     }
 }
 
