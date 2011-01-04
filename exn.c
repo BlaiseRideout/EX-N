@@ -10,6 +10,7 @@
  * obscure documentation. */
 
 #include <stdlib.h>
+#include <stdarg.h>
 #include <X11/Xlib.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
@@ -59,6 +60,7 @@ static void attachwindow(Monitor *m, Window w);
 static void cyclewin(const Arg *arg);
 static void destroynotify(XEvent *e);
 static void detachwindow(Window w);
+static void die(const char *errstr, ...);
 static Client* findclient(Window w);
 static void grabkeys(void);
 static void initmons(void);
@@ -102,7 +104,9 @@ attachwindow(Monitor* m, Window w) {
 
     Client *c, *find;
 
-    c = (Client *)malloc(sizeof(Client));
+    if(!(c = (Client *)malloc(sizeof(Client))))
+        die("Failed to allocate memory for new client instance.");
+
     c->win = w;
     c->next = NULL;
     c->parent = m;
@@ -178,6 +182,16 @@ detachwindow(Window w) {
         m->first = c->next;
         m->current = m->first;
     }
+}
+
+void
+die(const char *errstr, ...) {
+    va_list ap;
+
+    va_start(ap, errstr);
+    vfprintf(stderr, errstr, ap);
+    va_end(ap);
+    exit(EXIT_FAILURE);
 }
 
 Client *
