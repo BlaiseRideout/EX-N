@@ -1,4 +1,4 @@
-/* EXN is written by John Anthony <john_anthony@kingkill.com>, 2010.
+/* EXN is written by John Anthony <john_anthony@kingkill.com>, 2011.
  *
  * This software is in the public domain
  * and is provided AS IS, with NO WARRANTY.
@@ -11,6 +11,7 @@
 
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 #include <X11/Xlib.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
@@ -56,38 +57,43 @@ typedef struct {
 
 /* Predecs */
 static void attachwindow(Monitor *m, Window w);
+static void configurerequest(XEvent *e);
+static void configurenotify(XEvent *e);
+static Monitor* createmon();
 static void cyclewin(const Arg *arg);
 static void destroynotify(XEvent *e);
 static void detachwindow(Window w);
 static void die(const char *errstr, ...);
+static void enternotify(XEvent *e);
 static Client* findclient(Window w);
 static void grabkeys(void);
 static void initmons(void);
 static void keypress(XEvent *e);
 static void killclient(const Arg *arg);
-static void refocus(void);
-static void quit(const Arg *arg);
 static void mapnotify(XEvent *e);
 static void monfoc(const Arg *arg);
 static void monmove(const Arg *arg);
+static void quit(const Arg *arg);
+static void refocus(void);
 static void updatenumlockmask(void);
 
 /* Variables */
 static unsigned int numlockmask = 0;
+static int screen;
 static void (*handler[LASTEvent]) (XEvent *) = {
-/*     [ButtonPress] = XXXXX, */
-/*     [ClientMessage] = XXXXX, */
-/*     [ConfigureRequest] = XXXXX, */
-/*     [ConfigureNotify] = XXXXX, */
+    /*     [ButtonPress] = XXXXX, */
+    /*     [ClientMessage] = XXXXX, */
+    /*     [ConfigureRequest] = configurerequest, */
+    /*     [ConfigureNotify] = configurenotify, */
     [DestroyNotify] = destroynotify,
-/*     [EnterNotify] = XXXXX, */
-/*     [Expose] = XXXXX, */
-/*     [FocusIn] = XXXXX, */
+    /*     [EnterNotify] = enternotify, */
+    /*     [Expose] = XXXXX, */
+    /*     [FocusIn] = XXXXX, */
     [KeyPress] = keypress,
     [MapNotify] = mapnotify,
-/*     [MapRequest] = XXXXX, */
-/*     [PropertyNotify] = XXXXX, */
-/*     [UnmapNotify] = XXXXX */
+    /*     [MapRequest] = XXXXX, */
+    /*     [PropertyNotify] = XXXXX, */
+    /*     [UnmapNotify] = XXXXX */
 };
 static Bool running = True;
 static Display *dpy;
@@ -124,6 +130,37 @@ attachwindow(Monitor* m, Window w) {
 }
 
 void
+configurerequest(XEvent *e) {
+    /* Window w = e->xmap.window; */
+    /* attachwindow(selmon, w); */
+    /* XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h); */
+    /* refocus(); */
+}
+
+void
+configurenotify(XEvent *e) {
+    /* Window w = e->xmap.window; */
+    /* attachwindow(selmon, w); */
+    /* XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h); */
+    /* refocus(); */
+}
+
+Monitor *
+createmon() {
+    Monitor *m;
+
+    if(!(m = (Monitor *)calloc(1, sizeof(Monitor))))
+        die("fatal: could not malloc() %u bytes\n", sizeof(Monitor));
+
+    /* Special logic that needs to be applied to all created monitors goes here */
+    /* such as attaching OSD windows */
+    /*  */
+    /*  */
+
+    return m;
+}
+
+void
 cyclewin(const Arg *arg) {
 
     if (selmon->current)
@@ -155,7 +192,7 @@ destroynotify(XEvent *e) {
         detachwindow(c->win);
         free(c);
     }
-    
+
     refocus();
 }
 
@@ -192,6 +229,21 @@ die(const char *errstr, ...) {
     exit(EXIT_FAILURE);
 }
 
+void
+enternotify(XEvent *e) {
+    /* Monitor *m; */
+    /* XCrossingEvent *ev = &e->xcrossing; */
+    /* Window w = ev->window; */
+
+    /* if((ev->mode != NotifyNormal || ev->detail == NotifyInferior) && w != root) */
+    /*     return; */
+
+    /* attachwindow(selmon, w); */
+    /* XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h); */
+    /* refocus(); */
+
+}
+
 Client *
 findclient(Window w) {
     Client *c;
@@ -209,45 +261,95 @@ findclient(Window w) {
 void
 grabkeys(void) {
     updatenumlockmask();
-        unsigned int i, j;
-        unsigned int modifiers[] = { 0, LockMask, numlockmask, numlockmask|LockMask };
-        KeyCode code;
+    unsigned int i, j;
+    unsigned int modifiers[] = { 0, LockMask, numlockmask, numlockmask|LockMask };
+    KeyCode code;
 
-        XUngrabKey(dpy, AnyKey, AnyModifier, root);
-        for(i = 0; i < LENGTH(keys); i++) {
-            if((code = XKeysymToKeycode(dpy, keys[i].keysym)))
-                for(j = 0; j < LENGTH(modifiers); j++)
-                    XGrabKey(dpy, code, keys[i].mod | modifiers[j], root,
-                            True, GrabModeAsync, GrabModeAsync);
-        }
+    XUngrabKey(dpy, AnyKey, AnyModifier, root);
+    for(i = 0; i < LENGTH(keys); i++) {
+        if((code = XKeysymToKeycode(dpy, keys[i].keysym)))
+            for(j = 0; j < LENGTH(modifiers); j++)
+                XGrabKey(dpy, code, keys[i].mod | modifiers[j], root,
+                        True, GrabModeAsync, GrabModeAsync);
+    }
 }
 
+#ifdef XINERAMA
+static Bool
+isuniquegeom(XineramaScreenInfo *unique, size_t len, XineramaScreenInfo *info) {                                                                                                                                    
+    unsigned int i;
+
+    for(i = 0; i < len; i++)
+        if(unique[i].x_org == info->x_org && unique[i].y_org == info->y_org
+                && unique[i].width == info->width && unique[i].height == info->height)
+            return False;
+    return True;
+}
+#endif /* XINERAMA */
+
+
 void
-initmons(void) {    /* Needs to be generalised using Xinerama */
+initmons(void) {
 
-    firstmon = (Monitor*)malloc(sizeof(Monitor));
-    firstmon->mnext = (Monitor*)malloc(sizeof(Monitor));
+#ifdef XINERAMA
+    if(XineramaIsActive(dpy)) {
+        int i, j, n, nn;
+        Monitor *m;
+        XineramaScreenInfo *info = XineramaQueryScreens(dpy, &nn);
+        XineramaScreenInfo *unique = NULL;
 
-    firstmon->x = 0;
-    firstmon->y = 0;
-    firstmon->w = 1280;
-    firstmon->h = 1024;
-    firstmon->first = NULL;
-    firstmon->last = NULL;
-    firstmon->current = NULL;
-
-    firstmon->mnext->x = 1280;
-    firstmon->mnext->y = 0;
-    firstmon->mnext->w = 1920;
-    firstmon->mnext->h = 1080;
-    firstmon->mnext->first = NULL;
-    firstmon->mnext->last = NULL;
-    firstmon->mnext->current = NULL;
-
-    firstmon->mnext->mprev = firstmon;
-    firstmon->mprev = NULL;
-    firstmon->mnext->mnext = NULL;
-
+        for(n = 0, m = firstmon; m; m = m->mnext, n++);
+        /* only consider unique geometries as separate screens */
+        if(!(unique = (XineramaScreenInfo *)malloc(sizeof(XineramaScreenInfo) * nn)))
+            die("fatal: could not malloc() %u bytes\n", sizeof(XineramaScreenInfo) * nn);
+        for(i = 0, j = 0; i < nn; i++)
+            if(isuniquegeom(unique, j, &info[i]))
+                memcpy(&unique[j++], &info[i], sizeof(XineramaScreenInfo));
+        XFree(info);
+        nn = j;
+        if(n <= nn) {
+            for(i = 0; i < (nn - n); i++) { /* new monitors available */
+                for(m = firstmon; m && m->mnext; m = m->mnext);
+                if(m) {
+                    m->mnext = createmon();
+                    m->mnext->mprev = m;
+                }
+                else
+                    firstmon = createmon();
+            }
+            for(i = 0, m = firstmon; i < nn && m; m = m->mnext, i++) {
+                m->x = unique[i].x_org;
+                m->y = unique[i].y_org;
+                m->w = unique[i].width;
+                m->h = unique[i].height;
+            }
+        }
+        /* else { less monitors available nn < n */ 
+        /*     for(i = nn; i < n; i++) { */
+        /*         for(m = mons; m && m->next; m = m->next); */
+        /*         while(m->clients) { */
+        /*             dirty = True; */
+        /*             c = m->clients; */
+        /*             m->clients = c->next; */
+        /*             detachstack(c); */
+        /*             c->mon = mons; */
+        /*             attach(c); */
+        /*             attachstack(c); */
+        /*         } */
+        /*         if(m == selmon) */
+        /*             selmon = mons; */
+        /*         cleanupmon(m); */
+        /*     } */
+        /* } */
+        free(unique);
+    }
+    else
+#endif
+    {
+        firstmon = createmon();
+        firstmon->w = DisplayWidth(dpy, screen);
+        firstmon->h = DisplayHeight(dpy, screen);
+    }
     selmon = firstmon;
 }
 
@@ -358,7 +460,8 @@ int main()
     XSetWindowAttributes wa;
 
     if(!(dpy = XOpenDisplay(0x0))) return 1;
-    root = DefaultRootWindow(dpy);
+    screen = DefaultScreen(dpy);
+    root = RootWindow(dpy, screen);
 
     initmons();
 
