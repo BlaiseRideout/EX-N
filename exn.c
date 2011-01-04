@@ -13,7 +13,6 @@
 #include <X11/Xlib.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
-#include <unistd.h>
 #ifdef XINERAMA
 #include <X11/extensions/Xinerama.h>
 #endif
@@ -57,13 +56,10 @@ typedef struct {
 
 /* Predecs */
 static void attachwindow(Monitor *m, Window w);
-static void configurerequest(XEvent *e);
 static void cyclewin(const Arg *arg);
 static void destroynotify(XEvent *e);
 static void detachwindow(Window w);
 static Client* findclient(Window w);
-/* static Monitor* findparent(Client *c); */
-static void focusin(XEvent *e);
 static void grabkeys(void);
 static void initmons(void);
 static void keypress(XEvent *e);
@@ -79,19 +75,19 @@ static void updatenumlockmask(void);
 static unsigned int numlockmask = 0;
 static int selmon = 1;
 static void (*handler[LASTEvent]) (XEvent *) = {
-    /* [ButtonPress] = buttonpress, */
-    /* [ClientMessage] = clientmessage, */
-    [ConfigureRequest] = configurerequest,
-    /* [ConfigureNotify] = configurenotify, */
+/*     [ButtonPress] = XXXXX, */
+/*     [ClientMessage] = XXXXX, */
+/*     [ConfigureRequest] = XXXXX, */
+/*     [ConfigureNotify] = XXXXX, */
     [DestroyNotify] = destroynotify,
-    /* [EnterNotify] = enternotify, */
-    /* [Expose] = expose, */
-    [FocusIn] = focusin,
+/*     [EnterNotify] = XXXXX, */
+/*     [Expose] = XXXXX, */
+/*     [FocusIn] = XXXXX, */
     [KeyPress] = keypress,
-    [MappingNotify] = mapnotify,
-    /* [MapRequest] = maprequest, */
-    /* [PropertyNotify] = propertynotify, */
-    /* [UnmapNotify] = unmapnotify */
+    [MapNotify] = mapnotify,
+/*     [MapRequest] = XXXXX, */
+/*     [PropertyNotify] = XXXXX, */
+/*     [UnmapNotify] = XXXXX */
 };
 static Bool running = True;
 static Display *dpy;
@@ -106,8 +102,8 @@ static Key keys[] = {
     {MODKEY|ShiftMask,  XK_Left,        monmove,    {.i = -1}   },
     {MODKEY,            XK_Right,       monfoc,     {.i = 1}    },
     {MODKEY|ShiftMask,  XK_Right,       monmove,    {.i = 1}    },
-    {Mod1Mask,          XK_Tab,         cyclewin,   {.i = 1}    },
-    {Mod1Mask|ShiftMask,XK_Tab,         cyclewin,   {.i = -1},  },
+    {MODKEY,            XK_Tab,         cyclewin,   {.i = 1}    },
+    {MODKEY|ShiftMask,  XK_Tab,         cyclewin,   {.i = -1},  },
     {MODKEY|ShiftMask,  XK_q,           quit,       {0}         },
     {Mod1Mask,          XK_F4,          killclient, {0}         },
 };
@@ -135,11 +131,6 @@ attachwindow(Monitor* m, Window w) {
 
     m->last = c;
     m->current = c;
-}
-
-void
-configurerequest(XEvent *e) {
-
 }
 
 void
@@ -210,26 +201,6 @@ findclient(Window w) {
         }
     }
     return NULL;
-}
-
-/* Monitor * */
-/* findparent(Client *c) { */
-/*     unsigned int i; */
-/*     Client *cc; */
-/*  */
-/*     for (i = 0; i < NUMMONS; i++) { */
-/*         for (cc = mons[i].first; cc; cc = cc->next) { */
-/*             if (cc == c) */
-/*                 return &mons[i]; */
-/*         } */
-/*     } */
-/*     return NULL; */
-/*  */
-/* } */
-
-void
-focusin(XEvent *e) { /* there are some broken focus acquiring clients */
-
 }
 
 void
@@ -329,7 +300,6 @@ monfoc(const Arg *arg) {
     if (n >= 0 && n < NUMMONS) {
         selmon = n;
         if (mons[selmon].current){
-            printf("Setting focus to monitor %i.\n", selmon);
             refocus();
         }
     }
@@ -382,24 +352,12 @@ int main()
     XChangeWindowAttributes(dpy, root, CWEventMask|CWCursor, &wa);
     XSelectInput(dpy, root, wa.event_mask);
     grabkeys();
-    /* XUngrabKey(dpy, AnyKey, AnyModifier, root); */
+    XSync(dpy, False);
 
-    while (running) {
-
-        XNextEvent(dpy, &ev);
-        if(ev.type == MapNotify)
-            mapnotify(&ev);
-        else if(ev.type == KeyPress)
-            keypress(&ev);
-        else if(ev.type == DestroyNotify)
-            destroynotify(&ev);
-
-        /* main event loop */
-        /* XSync(dpy, False); */
-        /* while(running && !XNextEvent(dpy, &ev)) { */
-        /*     if(handler[ev.type]) */
-        /*         handler[ev.type](&ev); */
-        /* } */
-
+    /* Main loop */
+    while(running && !XNextEvent(dpy, &ev)) {
+        if(handler[ev.type])
+            handler[ev.type](&ev);
     }
+
 }
