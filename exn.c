@@ -77,6 +77,11 @@ static void quit(const Arg *arg);
 static void refocus(void);
 static void updatenumlockmask(void);
 static Client * wintoclient(Window w);
+#ifdef XINERAMA
+static int cmprinfo(const void *a, const void *b);
+#endif
+
+
 
 /* Variables */
 static unsigned int numlockmask = 0;
@@ -224,6 +229,15 @@ detachwindow(Window w) {
     }
 }
 
+#ifdef XINERAMA
+static int cmprinfo(const void *a, const void *b) {
+    const XineramaScreenInfo *aa = a;
+    const XineramaScreenInfo *bb = b;
+
+    return (aa->x_org - bb->x_org);
+}
+#endif
+
 void
 die(const char *errstr, ...) {
     va_list ap;
@@ -292,7 +306,6 @@ isuniquegeom(XineramaScreenInfo *unique, size_t len, XineramaScreenInfo *info) {
 }
 #endif /* XINERAMA */
 
-
 void
 initmons(void) {
 
@@ -311,6 +324,12 @@ initmons(void) {
             if(isuniquegeom(unique, j, &info[i]))
                 memcpy(&unique[j++], &info[i], sizeof(XineramaScreenInfo));
         XFree(info);
+
+        //Sort the unique array by X co-ordinate
+        qsort(unique, j, sizeof(XineramaScreenInfo), cmprinfo);
+
+        printf("Accomodating %d monitors.\n", j);
+
         nn = j;
         if(n <= nn) {
             for(i = 0; i < (nn - n); i++) { /* new monitors available */
@@ -327,6 +346,8 @@ initmons(void) {
                 m->y = unique[i].y_org;
                 m->w = unique[i].width;
                 m->h = unique[i].height;
+
+                printf("Monitor %i is at: %i, %i. Size: %i %i\n", i, unique[i].x_org, unique[i].y_org, unique[i].width, unique[i].height);
             }
         }
         free(unique);
