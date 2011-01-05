@@ -59,14 +59,11 @@ typedef struct {
 /* Predecs */
 static Bool alreadymapped(Window w);
 static void attachwindow(Monitor *m, Window w);
-static void configurenotify(XEvent *e);
-static void configurerequest(XEvent *e);
 static Monitor* createmon();
 static void cyclewin(const Arg *arg);
 static void destroynotify(XEvent *e);
 static void detachwindow(Client *c);
 static void die(const char *errstr, ...);
-static void enternotify(XEvent *e);
 static Client* findclient(Window w);
 static void grabkeys(void);
 static void initmons(void);
@@ -79,7 +76,7 @@ static void monmove(const Arg *arg);
 static void quit(const Arg *arg);
 static void refocus(void);
 static void updatenumlockmask(void);
-static Client * wintoclient(Window w);
+/* static Client * wintoclient(Window w); */
 #ifdef XINERAMA
 static int cmprinfo(const void *a, const void *b);
 #endif
@@ -92,7 +89,7 @@ static int screen;
 static void (*handler[LASTEvent]) (XEvent *) = {
     /*     [ButtonPress] = XXXXX, */
     /*     [ClientMessage] = XXXXX, */
-    [ConfigureRequest] = configurerequest,
+    /*     [ConfigureRequest] = configurerequest, */
     /*     [ConfigureNotify] = configurenotify, */
     [DestroyNotify] = destroynotify,
     /*     [EnterNotify] = enternotify, */
@@ -152,26 +149,6 @@ attachwindow(Monitor* m, Window w) {
 
     m->last = c;
     m->current = c;
-}
-
-void
-configurerequest(XEvent *e) {
-    /* XConfigureRequestEvent *ev = &e->xconfigurerequest; */
-    /* Window w = ev->window; */
-    /* Client *c = wintoclient(w); */
-    /*  */
-    /* XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h); */
-    /* refocus(); */
-
-    /* XSync(dpy, False); */
-}
-
-void
-configurenotify(XEvent *e) {
-    /* Window w = e->xmap.window; */
-    /* attachwindow(selmon, w); */
-    /* XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h); */
-    /* refocus(); */
 }
 
 Monitor *
@@ -264,21 +241,6 @@ die(const char *errstr, ...) {
     vfprintf(stderr, errstr, ap);
     va_end(ap);
     exit(EXIT_FAILURE);
-}
-
-void
-enternotify(XEvent *e) {
-    /* Monitor *m; */
-    /* XCrossingEvent *ev = &e->xcrossing; */
-    /* Window w = ev->window; */
-
-    /* if((ev->mode != NotifyNormal || ev->detail == NotifyInferior) && w != root) */
-    /*     return; */
-
-    /* attachwindow(selmon, w); */
-    /* XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h); */
-    /* refocus(); */
-
 }
 
 Client *
@@ -417,14 +379,6 @@ killclient(const Arg *arg) {
 
     free(c);
     refocus();
-
-    /* OUT OF ACTION until window atoms are set up correctly! */
-
-    /* Client *c = selmon->current; */
-
-    /* detachwindow(c); */
-    /* refocus(); */
-    /* XKillClient(dpy, c->win); */
 }
 
 void
@@ -510,17 +464,17 @@ refocus(void) {
     }
 }
 
-Client *
-wintoclient(Window w) {
-    Client *c;
-    Monitor *m;
-
-    for(m = firstmon; m; m = m->mnext)
-        for(c = m->first; c; c = c->next)
-            if(c->win == w)
-                return c;
-    return NULL;
-}
+/* Client * */
+/* wintoclient(Window w) { */
+/*     Client *c; */
+/*     Monitor *m; */
+/*  */
+/*     for(m = firstmon; m; m = m->mnext) */
+/*         for(c = m->first; c; c = c->next) */
+/*             if(c->win == w) */
+/*                 return c; */
+/*     return NULL; */
+/* } */
 
 void
 updatenumlockmask(void) {
@@ -541,7 +495,8 @@ int main()
     XEvent ev;
     XSetWindowAttributes wa;
 
-    if(!(dpy = XOpenDisplay(0x0))) return 1;
+    if(!(dpy = XOpenDisplay(0x0)))
+        die("EX^N is unable to open the display.");
     screen = DefaultScreen(dpy);
     root = RootWindow(dpy, screen);
 
