@@ -78,7 +78,6 @@ static void maprequest(XEvent *e);
 static void monmove(const Arg *arg);
 static void quit(const Arg *arg);
 static void refocus(void);
-static void spawn(const Arg *arg);
 static void updatenumlockmask(void);
 static Client * wintoclient(Window w);
 #ifdef XINERAMA
@@ -509,19 +508,6 @@ refocus(void) {
         XSetInputFocus(dpy, selmon->current->win, RevertToPointerRoot, CurrentTime);
         XRaiseWindow(dpy, selmon->current->win);
     }
-}
-
-void
-spawn(const Arg *arg) {                                                                                                                                                                                             
-    if(fork() == 0) { 
-        if(dpy)
-            close(ConnectionNumber(dpy));
-        setsid();
-        execvp(((char **)arg->v)[0], (char **)arg->v);
-        fprintf(stderr, "exn: execvp %s", ((char **)arg->v)[0]);
-        perror(" failed");
-        exit(0);
-    }    
 }
 
 Client *
