@@ -173,7 +173,7 @@ createmon() {
 void
 cyclewin(const Arg *arg) {
 
-    if (selmon->current)
+    if (!selmon->current)
         return;
 
     if (arg->i > 0) {
