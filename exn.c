@@ -383,13 +383,29 @@ killclient(const Arg *arg) {
     if (!selmon->current)
         return;
 
+    Client *c = selmon->current;
+    XEvent ev;
+
+    ev.type = ClientMessage;
+    ev.xclient.window = c->win;
+    ev.xclient.message_type = XInternAtom(dpy, "WM_PROTOCOLS", False);
+    ev.xclient.format = 32;
+    ev.xclient.data.l[0] = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+    ev.xclient.data.l[1] = CurrentTime;
+    XSendEvent(dpy, c->win, False, NoEventMask, &ev);
+
+    detachwindow(c);
+
+    free(c);
+    refocus();
+
     /* OUT OF ACTION until window atoms are set up correctly! */
 
-    /* Window w = selmon->current->win; */
+    /* Client *c = selmon->current; */
 
-    /* detachwindow(&mons[selmon], w); */
+    /* detachwindow(c); */
     /* refocus(); */
-    /* XKillClient(dpy, w); */
+    /* XKillClient(dpy, c->win); */
 }
 
 void
