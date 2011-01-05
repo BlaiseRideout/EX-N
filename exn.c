@@ -56,6 +56,7 @@ typedef struct {
 } Key;
 
 /* Predecs */
+static Bool alreadymapped(Window w);
 static void attachwindow(Monitor *m, Window w);
 static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
@@ -70,8 +71,9 @@ static void grabkeys(void);
 static void initmons(void);
 static void keypress(XEvent *e);
 static void killclient(const Arg *arg);
-static void mapnotify(XEvent *e);
 static void monfoc(const Arg *arg);
+static void mapnotify(XEvent *e);
+static void maprequest(XEvent *e);
 static void monmove(const Arg *arg);
 static void quit(const Arg *arg);
 static void refocus(void);
@@ -97,7 +99,7 @@ static void (*handler[LASTEvent]) (XEvent *) = {
     /*     [FocusIn] = XXXXX, */
     [KeyPress] = keypress,
     [MapNotify] = mapnotify,
-    /*     [MapRequest] = XXXXX, */
+    [MapRequest] = maprequest,
     /*     [PropertyNotify] = XXXXX, */
     /*     [UnmapNotify] = XXXXX */
 };
@@ -108,6 +110,22 @@ static Window root;
 
 /* Config file goes here */
 #include "config.h"
+
+Bool
+alreadymapped(Window w) {
+
+    Monitor *m;
+    Client *c;
+
+    for (m = firstmon; m; m = m->mnext) {
+        for (c = m->first; c; c = c->next) {
+            if (w == c->win)
+                return True;
+        }
+    }
+
+    return False;
+}
 
 void
 attachwindow(Monitor* m, Window w) {
@@ -418,11 +436,28 @@ mapnotify(XEvent *e) {
     if (wa.override_redirect)
         return;
 
+    if (alreadymapped(w))
+        return;
+
     attachwindow(selmon, w);
     XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h);
     refocus();
 }
 
+void
+maprequest(XEvent *e) {
+    static XWindowAttributes wa;
+    Window w = e->xmaprequest.window;
+
+    XGetWindowAttributes(dpy, w, &wa);
+
+    if (wa.override_redirect)
+        return;
+
+    attachwindow(selmon, w);
+    XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h);
+    refocus();
+}
 void
 monmove(const Arg *arg) {
 
