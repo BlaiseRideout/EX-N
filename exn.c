@@ -66,6 +66,7 @@ static void detachwindow(Client *c);
 static void die(const char *errstr, ...);
 static Client* findclient(Window w);
 static void grabkeys(void);
+static void enternotify(XEvent *e);
 static void initmons(void);
 static void keypress(XEvent *e);
 static void killclient(const Arg *arg);
@@ -76,6 +77,7 @@ static void monmove(const Arg *arg);
 static void quit(const Arg *arg);
 static void refocus(void);
 static void updatenumlockmask(void);
+static Client* wintoclient(Window w);
 /* static Client * wintoclient(Window w); */
 #ifdef XINERAMA
 static int cmprinfo(const void *a, const void *b);
@@ -87,12 +89,12 @@ static int cmprinfo(const void *a, const void *b);
 static unsigned int numlockmask = 0;
 static int screen;
 static void (*handler[LASTEvent]) (XEvent *) = {
-    /*     [ButtonPress] = XXXXX, */
+    /* [ButtonPress] = buttonpress, */
     /*     [ClientMessage] = XXXXX, */
     /*     [ConfigureRequest] = configurerequest, */
     /*     [ConfigureNotify] = configurenotify, */
     [DestroyNotify] = destroynotify,
-    /*     [EnterNotify] = enternotify, */
+    [EnterNotify] = enternotify,
     /*     [Expose] = XXXXX, */
     /*     [FocusIn] = XXXXX, */
     [KeyPress] = keypress,
@@ -132,6 +134,8 @@ attachwindow(Monitor* m, Window w) {
 
     if(!(c = (Client *)malloc(sizeof(Client))))
         die("Failed to allocate memory for new client instance.");
+
+    XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
 
     c->win = w;
     c->next = NULL;
@@ -242,6 +246,23 @@ die(const char *errstr, ...) {
     va_end(ap);
     exit(EXIT_FAILURE);
 }
+
+void
+enternotify(XEvent *e) {
+    XCrossingEvent *ev = &e->xcrossing;
+    Client *c = wintoclient(ev->window);
+
+    printf("focusget!\n");
+
+    if(!c)
+        return;
+
+    selmon = c->parent;
+    c->parent->current = c;
+        
+    refocus();
+}
+
 
 Client *
 findclient(Window w) {
@@ -488,6 +509,18 @@ updatenumlockmask(void) {
             if(modmap->modifiermap[i * modmap->max_keypermod + j] == XKeysymToKeycode(dpy, XK_Num_Lock))
                 numlockmask = (1 << i);
     XFreeModifiermap(modmap);
+}
+
+Client *
+wintoclient(Window w) {
+    Client *c;
+    Monitor *m;
+
+    for(m = firstmon; m; m = m->mnext)
+        for(c = m->first; c; c = c->next)
+            if(c->win == w)
+                return c;
+    return NULL;
 }
 
 int main()
