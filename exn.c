@@ -62,7 +62,7 @@ static void configurerequest(XEvent *e);
 static Monitor* createmon();
 static void cyclewin(const Arg *arg);
 static void destroynotify(XEvent *e);
-static void detachwindow(Window w);
+static void detachwindow(Client *c);
 static void die(const char *errstr, ...);
 static void enternotify(XEvent *e);
 static Client* findclient(Window w);
@@ -199,7 +199,7 @@ destroynotify(XEvent *e) {
     Client *c = findclient(w);
 
     if (c) {
-        detachwindow(c->win);
+        detachwindow(c);
         free(c);
     }
 
@@ -207,8 +207,7 @@ destroynotify(XEvent *e) {
 }
 
 void
-detachwindow(Window w) {
-    Client *c = findclient(w);
+detachwindow(Client *c) {
     Monitor *m = c->parent;
 
     if (!c)
@@ -414,14 +413,14 @@ monmove(const Arg *arg) {
     if (!selmon->current)
         return;
     
-    Window w = selmon->current->win;
+    Client *c = selmon->current;
     Monitor *new, *old = selmon;
     monfoc(arg);
     new = selmon;
     if (new != old) {
-        detachwindow(w);
-        attachwindow(new, w);
-        XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h);
+        detachwindow(c);
+        attachwindow(new, c->win);
+        XMoveResizeWindow(dpy, c->win, selmon->x, selmon->y, selmon->w, selmon->h);
         refocus();
     }
 }
