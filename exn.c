@@ -57,8 +57,8 @@ typedef struct {
 
 /* Predecs */
 static void attachwindow(Monitor *m, Window w);
-static void configurerequest(XEvent *e);
 static void configurenotify(XEvent *e);
+static void configurerequest(XEvent *e);
 static Monitor* createmon();
 static void cyclewin(const Arg *arg);
 static void destroynotify(XEvent *e);
@@ -76,6 +76,7 @@ static void monmove(const Arg *arg);
 static void quit(const Arg *arg);
 static void refocus(void);
 static void updatenumlockmask(void);
+static Client * wintoclient(Window w);
 
 /* Variables */
 static unsigned int numlockmask = 0;
@@ -83,7 +84,7 @@ static int screen;
 static void (*handler[LASTEvent]) (XEvent *) = {
     /*     [ButtonPress] = XXXXX, */
     /*     [ClientMessage] = XXXXX, */
-    /*     [ConfigureRequest] = configurerequest, */
+    [ConfigureRequest] = configurerequest,
     /*     [ConfigureNotify] = configurenotify, */
     [DestroyNotify] = destroynotify,
     /*     [EnterNotify] = enternotify, */
@@ -131,10 +132,14 @@ attachwindow(Monitor* m, Window w) {
 
 void
 configurerequest(XEvent *e) {
-    /* Window w = e->xmap.window; */
-    /* attachwindow(selmon, w); */
-    /* XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h); */
-    /* refocus(); */
+    XConfigureRequestEvent *ev = &e->xconfigurerequest;
+    Window w = ev->window;
+    Client *c = wintoclient(w);
+    
+    XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h);
+    refocus();
+
+    XSync(dpy, False);
 }
 
 void
@@ -395,6 +400,9 @@ mapnotify(XEvent *e) {
 void
 monmove(const Arg *arg) {
 
+    if (!selmon->current)
+        return;
+    
     Window w = selmon->current->win;
     Monitor *new, *old = selmon;
     monfoc(arg);
@@ -424,6 +432,11 @@ monfoc(const Arg *arg) {
 }
 
 void
+quit(const Arg *arg) {
+    running = False;
+}
+
+void
 refocus(void) {
     /* Safety */
     if (!selmon->current)
@@ -435,9 +448,16 @@ refocus(void) {
     }
 }
 
-void
-quit(const Arg *arg) {
-    running = False;
+Client *
+wintoclient(Window w) {
+    Client *c;
+    Monitor *m;
+
+    for(m = firstmon; m; m = m->mnext)
+        for(c = m->first; c; c = c->next)
+            if(c->win == w)
+                return c;
+    return NULL;
 }
 
 void
