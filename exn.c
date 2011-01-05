@@ -132,14 +132,14 @@ attachwindow(Monitor* m, Window w) {
 
 void
 configurerequest(XEvent *e) {
-    XConfigureRequestEvent *ev = &e->xconfigurerequest;
-    Window w = ev->window;
-    Client *c = wintoclient(w);
-    
-    XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h);
-    refocus();
+    /* XConfigureRequestEvent *ev = &e->xconfigurerequest; */
+    /* Window w = ev->window; */
+    /* Client *c = wintoclient(w); */
+    /*  */
+    /* XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h); */
+    /* refocus(); */
 
-    XSync(dpy, False);
+    /* XSync(dpy, False); */
 }
 
 void
@@ -329,23 +329,6 @@ initmons(void) {
                 m->h = unique[i].height;
             }
         }
-        /* else { less monitors available nn < n */ 
-        /*     for(i = nn; i < n; i++) { */
-        /*         for(m = mons; m && m->next; m = m->next); */
-        /*         while(m->clients) { */
-        /*             dirty = True; */
-        /*             c = m->clients; */
-        /*             m->clients = c->next; */
-        /*             detachstack(c); */
-        /*             c->mon = mons; */
-        /*             attach(c); */
-        /*             attachstack(c); */
-        /*         } */
-        /*         if(m == selmon) */
-        /*             selmon = mons; */
-        /*         cleanupmon(m); */
-        /*     } */
-        /* } */
         free(unique);
     }
     else
@@ -391,7 +374,14 @@ killclient(const Arg *arg) {
 
 void
 mapnotify(XEvent *e) {
+    static XWindowAttributes wa;
     Window w = e->xmap.window;
+
+    XGetWindowAttributes(dpy, w, &wa);
+
+    if (wa.override_redirect)
+        return;
+
     attachwindow(selmon, w);
     XMoveResizeWindow(dpy, w, selmon->x, selmon->y, selmon->w, selmon->h);
     refocus();
