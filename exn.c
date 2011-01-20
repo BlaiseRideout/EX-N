@@ -84,7 +84,6 @@ static int cmprinfo(const void *a, const void *b);
 #endif
 
 
-
 /* Variables */
 static unsigned int numlockmask = 0;
 static int screen;
@@ -549,4 +548,5 @@ int main()
             handler[ev.type](&ev);
     }
 
+    return 0;
 }
