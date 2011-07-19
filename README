@@ -1,3 +1,7 @@
+PLEASE NOTE: This WM is being phased out in favour of a new window
+maneger written from scratch (again) -- a project I intend to begin
+in October. It will no longer be supported.
+
 EX^N - Extra X to the Power of N
 ================================
 exn is an extremely fast, small and straightforward window manager
