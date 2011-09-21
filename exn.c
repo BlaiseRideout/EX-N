@@ -6,10 +6,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <X11/cursorfont.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xinerama.h>
 
-#define LENGTH(x)   (sizeof(x) / sizeof(x[0])
+#define LENGTH(X)   ( sizeof X / sizeof X[0] )
 
 typedef struct Client Client;
 struct Client {
@@ -19,9 +20,7 @@ struct Client {
 
 typedef struct Monitor Monitor;
 struct Monitor {
-    Client *heads;
-    int curr;
-    Monitor *next;
+    Client *heads, *currhead, *currclient;
     int x;
     int y;
     int width;
@@ -29,15 +28,35 @@ struct Monitor {
 };
 
 static void clear_up(void);
-static Monitor* create_mon(int x, int y, int w, int h);
+static Monitor create_mon(int x, int y, int w, int h);
 static void errout(char *msg);
 static void init(void);
+static void maprequest(XEvent *e);
+static Client* new_client(Window w);
+static void nohandler(XEvent *e);
+static void run(void);
 static void* safe_malloc(unsigned int sz, char *errmsg);
+static void (*handler[LASTEvent]) (XEvent *) = {
+	[ButtonPress] = nohandler,
+	[ClientMessage] = nohandler,
+	[ConfigureRequest] = nohandler,
+	[ConfigureNotify] = nohandler,
+	[DestroyNotify] = nohandler,
+	[EnterNotify] = nohandler,
+	[Expose] = nohandler,
+	[FocusIn] = nohandler,
+	[KeyPress] = nohandler,
+	[MappingNotify] = nohandler,
+	[MapRequest] = maprequest,
+	[PropertyNotify] = nohandler,
+	[UnmapNotify] = nohandler
+};
 
 static Display *dpy;
 static int screen;
 static Window root;
-static Monitor *MonLL = NULL;
+static Monitor *mons, *currmon;
+static int running;
 
 #include "config.h"
 
@@ -46,15 +65,17 @@ clear_up(void) {
     XCloseDisplay(dpy);
 }
 
-static Monitor*
+static Monitor
 create_mon(int x, int y, int w, int h) {
-    Monitor *m;
+    Monitor m;
 
-    m = safe_malloc(sizeof(Monitor), "Error allocating space for new monitor.");
-    m->x = x;
-    m->y = y;
-    m->width = w;
-    m->height = h;
+    m.x = x;
+    m.y = y;
+    m.width = w;
+    m.height = h;
+
+    m.currhead = NULL;
+    m.heads = safe_malloc(LENGTH(headnames) * sizeof(Client), "Failed allocating client space");
 
     return m;
 }
@@ -67,10 +88,42 @@ errout(char* msg) {
 }
 
 static void
+maprequest(XEvent *e) {
+    XMapRequestEvent *ev;
+    XWindowAttributes wa;
+    Client *c;
+
+    ev = &e->xmaprequest;
+    if(!XGetWindowAttributes(dpy, ev->window, &wa))
+        return;
+
+    c = new_client(ev->window);
+    c->next = currmon->currhead;
+    currmon->currhead = c;
+
+    XMoveResizeWindow(dpy, c->win, currmon->x, currmon->y, currmon->width, currmon->height);
+    XMapWindow(dpy, c->win);
+}
+
+static Client*
+new_client(Window w) {
+    Client *c;
+
+    c = safe_malloc(sizeof(Client), "Failed to malloc space for client details.");
+    c->win = w;
+
+    return c;
+}
+
+static void
+nohandler(XEvent *e) {
+}
+
+static void
 init(void) {
     XineramaScreenInfo *info;
+    XSetWindowAttributes wa;
     int i, numscreens;
-    Monitor *m;
 
     dpy = XOpenDisplay(NULL);
     if (!dpy)
@@ -80,13 +133,31 @@ init(void) {
     root = RootWindow(dpy, screen);
 
     /* Handle Xinerama screen loading */
+    mons = safe_malloc(numscreens * sizeof(Monitor), "Failed to allocate memory for monitors");
     info = XineramaQueryScreens(dpy, &numscreens);
-    for (i = 0; i < numscreens; ++i) {
-        m = MonLL;
-        MonLL = create_mon(info[i].x_org, info[i].y_org, info[i].width, info[i].height);
-        MonLL->next = m;
-    }
+    for (i = 0; i < numscreens; ++i)
+        mons[i] = create_mon(info[i].x_org, info[i].y_org, info[i].width, info[i].height);
     XFree(info);
+    currmon = mons;
+
+    wa.cursor = XCreateFontCursor(dpy, XC_left_ptr);
+    wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask|ButtonPressMask
+        |EnterWindowMask|LeaveWindowMask|StructureNotifyMask
+        |PropertyChangeMask;
+    XChangeWindowAttributes(dpy, root, CWEventMask|CWCursor, &wa);
+    XSelectInput(dpy, root, wa.event_mask);
+
+    running = 1;
+    XSync(dpy, False);
+}
+
+static void
+run(void) {
+    XEvent ev;
+    while(running && !XNextEvent(dpy, &ev)) {
+        if(handler[ev.type])
+            handler[ev.type](&ev); /* call handler */
+    }
 }
 
 static void*
@@ -99,8 +170,7 @@ safe_malloc(unsigned int sz, char *errmsg) {
 
 int main(int argc, char** argv) {
     init();
-
-
+    run();
     clear_up();
     return 0;
 }
