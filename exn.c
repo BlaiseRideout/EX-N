@@ -15,27 +15,29 @@
 typedef struct Client Client;
 struct Client {
     Window win;
-    Client *next;
+    Client *next, *prev;
 };
 
-typedef struct Monitor Monitor;
-struct Monitor {
-    Client *heads, *currhead, *currclient;
+typedef struct {
     int x;
     int y;
     int width;
     int height;
-};
+    Client *clients;
+} Monitor;
 
 static void clear_up(void);
 static Monitor create_mon(int x, int y, int w, int h);
 static void errout(char *msg);
+static Client* find_client(Window w);
 static void init(void);
 static void maprequest(XEvent *e);
 static Client* new_client(Window w);
 static void nohandler(XEvent *e);
+static void remove_client(Client *c);
 static void run(void);
 static void* safe_malloc(unsigned int sz, char *errmsg);
+static void unmapnotify(XEvent *e);
 static void (*handler[LASTEvent]) (XEvent *) = {
 	[ButtonPress] = nohandler,
 	[ClientMessage] = nohandler,
@@ -49,14 +51,16 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[MappingNotify] = nohandler,
 	[MapRequest] = maprequest,
 	[PropertyNotify] = nohandler,
-	[UnmapNotify] = nohandler
+	[UnmapNotify] = unmapnotify
 };
 
 static Display *dpy;
 static int screen;
 static Window root;
-static Monitor *mons, *currmon;
+static Monitor *mons;
 static int running;
+static int nummons;
+static int currmon;
 
 #include "config.h"
 
@@ -74,8 +78,7 @@ create_mon(int x, int y, int w, int h) {
     m.width = w;
     m.height = h;
 
-    m.currhead = NULL;
-    m.heads = safe_malloc(LENGTH(headnames) * sizeof(Client), "Failed allocating client space");
+    m.clients = NULL;
 
     return m;
 }
@@ -87,21 +90,49 @@ errout(char* msg) {
     exit(1);
 }
 
+static Client*
+find_client(Window w) {
+    int i;
+    Client *c;
+
+    printf("Lookign for window %d\n", w);
+
+    for (i = 0; i < nummons; ++i) {
+        for (c = mons[i].clients; c; c = c->next) {
+            printf("Trying against window %d\n", c->win);
+            if (c->win == w)
+                return c;
+        }
+    }
+
+    return NULL;
+}
+
 static void
 maprequest(XEvent *e) {
     XMapRequestEvent *ev;
     XWindowAttributes wa;
     Client *c;
+    Monitor *m;
+
+    m = &mons[currmon];
 
     ev = &e->xmaprequest;
     if(!XGetWindowAttributes(dpy, ev->window, &wa))
         return;
 
     c = new_client(ev->window);
-    c->next = currmon->currhead;
-    currmon->currhead = c;
 
-    XMoveResizeWindow(dpy, c->win, currmon->x, currmon->y, currmon->width, currmon->height);
+    if (m->clients) {
+        c->next = m->clients;
+        m->clients->prev = c;
+    }
+    else
+        c->next = NULL;
+    m->clients = c;
+    c->prev = NULL;
+
+    XMoveResizeWindow(dpy, c->win, m->x, m->y, m->width, m->height);
     XMapWindow(dpy, c->win);
     XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
 }
@@ -121,10 +152,27 @@ nohandler(XEvent *e) {
 }
 
 static void
+remove_client(Client *c) {
+    int i;
+
+    /* Adjust the head of out monitors is necessary */
+    for (i = 0; i < nummons; ++i)
+        if (mons[i].clients == c)
+            mons[i].clients = mons[i].clients->next;
+
+    if (c->prev)
+        c->prev->next = c->next;
+    if (c->next)
+        c->next->prev = c->prev;
+
+    free(c);
+}
+
+static void
 init(void) {
     XineramaScreenInfo *info;
     XSetWindowAttributes wa;
-    int i, numscreens;
+    int i;
 
     dpy = XOpenDisplay(NULL);
     if (!dpy)
@@ -132,14 +180,14 @@ init(void) {
 
     screen = DefaultScreen(dpy);
     root = RootWindow(dpy, screen);
+    currmon = 0;
 
     /* Handle Xinerama screen loading */
-    mons = safe_malloc(numscreens * sizeof(Monitor), "Failed to allocate memory for monitors");
-    info = XineramaQueryScreens(dpy, &numscreens);
-    for (i = 0; i < numscreens; ++i)
+    info = XineramaQueryScreens(dpy, &nummons);
+    mons = safe_malloc(nummons * sizeof(Monitor), "Failed to allocate memory for monitors");
+    for (i = 0; i < nummons; ++i)
         mons[i] = create_mon(info[i].x_org, info[i].y_org, info[i].width, info[i].height);
     XFree(info);
-    currmon = mons;
 
     wa.cursor = XCreateFontCursor(dpy, XC_left_ptr);
     wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask|ButtonPressMask
@@ -167,6 +215,21 @@ safe_malloc(unsigned int sz, char *errmsg) {
     if (!mem)
         errout(errmsg);
     return mem;
+}
+
+static void
+unmapnotify(XEvent *e) {
+    XUnmapEvent *ev;
+    Client *c;
+
+    ev = &e->xunmap;
+    c = find_client(ev->window);
+    if (!c) {
+        puts("Unable to find matching client.");
+        return;
+    }
+
+    remove_client(c);
 }
 
 int main(int argc, char** argv) {
