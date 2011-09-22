@@ -103,6 +103,7 @@ maprequest(XEvent *e) {
 
     XMoveResizeWindow(dpy, c->win, currmon->x, currmon->y, currmon->width, currmon->height);
     XMapWindow(dpy, c->win);
+    XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
 }
 
 static Client*
