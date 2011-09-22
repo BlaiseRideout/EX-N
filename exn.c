@@ -95,15 +95,10 @@ find_client(Window w) {
     int i;
     Client *c;
 
-    printf("Lookign for window %d\n", w);
-
-    for (i = 0; i < nummons; ++i) {
-        for (c = mons[i].clients; c; c = c->next) {
-            printf("Trying against window %d\n", c->win);
+    for (i = 0; i < nummons; ++i)
+        for (c = mons[i].clients; c; c = c->next)
             if (c->win == w)
                 return c;
-        }
-    }
 
     return NULL;
 }
@@ -155,10 +150,13 @@ static void
 remove_client(Client *c) {
     int i;
 
-    /* Adjust the head of out monitors is necessary */
-    for (i = 0; i < nummons; ++i)
-        if (mons[i].clients == c)
+    /* Adjust the head of our monitors is necessary */
+    for (i = 0; i < nummons; ++i) {
+        if (mons[i].clients == c) {
             mons[i].clients = mons[i].clients->next;
+            break;
+        }
+    }
 
     if (c->prev)
         c->prev->next = c->next;
