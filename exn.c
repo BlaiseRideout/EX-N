@@ -39,6 +39,7 @@ static void clear_up(void);
 static Monitor create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
 static void destroynotify(XEvent *e);
 static void errout(char *msg);
+static void ex_end_session(void);
 static void ex_focus_monitor_down(void);
 static void ex_focus_monitor_up(void);
 static void ex_kill_client(void);
@@ -144,6 +145,11 @@ errout(char* msg) {
 }
 
 static void
+ex_end_session(void) {
+    running = 0;
+}
+
+static void
 ex_focus_monitor_down(void) {
     currmon--;
     if (currmon < 0)
@@ -163,7 +169,21 @@ ex_focus_monitor_up(void) {
 
 static void
 ex_kill_client(void) {
-    XKillClient(dpy, mons[currmon].clients->win);
+    XEvent ev;
+    Atom killmsg;
+
+    if(!mons[currmon].clients)
+        return;
+
+    killmsg = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+
+    ev.type = ClientMessage;
+    ev.xclient.window = mons[currmon].clients->win;
+    ev.xclient.message_type = XInternAtom(dpy, "WM_PROTOCOLS", False);
+    ev.xclient.format = 32;
+    ev.xclient.data.l[0] = killmsg;
+    ev.xclient.data.l[1] = CurrentTime;
+    XSendEvent(dpy, mons[currmon].clients->win, False, NoEventMask, &ev);
 }
 
 static Client*
