@@ -33,6 +33,7 @@ typedef struct {
     Client *clients;
 } Monitor;
 
+static void adjust_focus(void);
 static void assign_keys(void);
 static void clear_up(void);
 static Monitor create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
@@ -73,6 +74,15 @@ static int nummons;
 static unsigned int currmon;
 
 #include "config.h"
+
+static void
+adjust_focus(void) {
+    if (!mons[currmon].clients)
+        return;
+
+    XRaiseWindow(dpy, mons[currmon].clients->win);
+    XSetInputFocus(dpy, mons[currmon].clients->win, RevertToPointerRoot, CurrentTime);
+}
 
 static void
 assign_keys(void) {
@@ -138,12 +148,11 @@ maprequest(XEvent *e) {
     Client *c;
     Monitor *m;
 
-    m = &mons[currmon];
-
     ev = &e->xmaprequest;
     if(!XGetWindowAttributes(dpy, ev->window, &wa))
         return;
 
+    m = &mons[currmon];
     c = new_client(ev->window);
 
     if (m->clients) {
@@ -178,7 +187,7 @@ static void
 remove_client(Client *c) {
     unsigned int i;
 
-    /* Adjust the head of our monitors is necessary */
+    /* Adjust the head of our monitors if necessary */
     for (i = 0; i < nummons; ++i) {
         if (mons[i].clients == c) {
             mons[i].clients = mons[i].clients->next;
@@ -190,6 +199,8 @@ remove_client(Client *c) {
         c->prev->next = c->next;
     if (c->next)
         c->next->prev = c->prev;
+
+    adjust_focus();
 
     free(c);
 }
