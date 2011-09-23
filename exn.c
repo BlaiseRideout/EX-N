@@ -41,6 +41,7 @@ static void destroynotify(XEvent *e);
 static void errout(char *msg);
 static void ex_focus_monitor_down(void);
 static void ex_focus_monitor_up(void);
+static void ex_kill_client(void);
 static Client* find_client(Window w);
 static void init(void);
 static void keypress(XEvent *e);
@@ -126,9 +127,11 @@ destroynotify(XEvent *e) {
     ev = &e->xdestroywindow;
     c = find_client(ev->window);
     if (!c) {
-        puts("Asked to destroy a non-existing window!");
+        printf("Asked to destroy an unmanaged window: %d\n", (int)ev->window);
         return;
     }
+
+    printf("Asked to destroy managed window: %d\n", (int)ev->window);
 
     remove_client(c);
 }
@@ -158,6 +161,11 @@ ex_focus_monitor_up(void) {
     adjust_focus();
 }
 
+static void
+ex_kill_client(void) {
+    XKillClient(dpy, mons[currmon].clients->win);
+}
+
 static Client*
 find_client(Window w) {
     unsigned int i;
@@ -167,6 +175,17 @@ find_client(Window w) {
         for (c = mons[i].clients; c; c = c->next)
             if (c->win == w)
                 return c;
+
+    /* Debug stuff begins */
+    printf("find_client faild to match up window %d\n", (int)w);
+    puts("Available windows are:");
+
+    for (i = 0; i < nummons; ++i) {
+        printf("Monitor %d:\n", i);
+        for (c = mons[i].clients; c; c = c->next) {
+            printf("Client window: %d\n", (int)c->win);
+        }
+    }
 
     return NULL;
 }
@@ -195,7 +214,6 @@ maprequest(XEvent *e) {
     XMapRequestEvent *ev;
     XWindowAttributes wa;
     Client *c;
-    Monitor *m;
 
     ev = &e->xmaprequest;
     if(!XGetWindowAttributes(dpy, ev->window, &wa))
@@ -203,19 +221,22 @@ maprequest(XEvent *e) {
     if(wa.override_redirect)
         return;
 
-    m = &mons[currmon];
     c = new_client(ev->window);
 
-    if (m->clients) {
-        c->next = m->clients;
-        m->clients->prev = c;
+    if (mons[currmon].clients) {
+        c->next = mons[currmon].clients;
+        mons[currmon].clients->prev = c;
     }
     else
         c->next = NULL;
-    m->clients = c;
-    c->prev = NULL;
+    mons[currmon].clients = c;
 
-    XMoveResizeWindow(dpy, c->win, m->x, m->y, m->width, m->height);
+    printf("Being asked to map window %d\n", (int)ev->window);
+
+    if (mons[currmon].clients)
+        printf("Monitor %d now has client %d\n", currmon, (int)ev->window);
+
+    XMoveResizeWindow(dpy, c->win, mons[currmon].x, mons[currmon].y, mons[currmon].width, mons[currmon].height);
     XMapWindow(dpy, c->win);
     XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
 }
@@ -226,6 +247,7 @@ new_client(Window w) {
 
     c = safe_malloc(sizeof(Client), "Failed to malloc space for client details.");
     c->win = w;
+    c->prev = NULL;
 
     return c;
 }
@@ -309,17 +331,8 @@ safe_malloc(unsigned int sz, char *errmsg) {
 
 static void
 unmapnotify(XEvent *e) {
-    XUnmapEvent *ev;
-    Client *c;
-
-    ev = &e->xunmap;
-    c = find_client(ev->window);
-    if (!c) {
-        puts("Unable to find matching client.");
-        return;
-    }
-
-    remove_client(c);
+    XUnmapEvent *ev = &e->xunmap;
+    printf("Being asked to UNmap window %d\n", (int)ev->window);
 }
 
 int main(int argc, char** argv) {
