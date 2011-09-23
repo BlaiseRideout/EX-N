@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <X11/cursorfont.h>
 #include <X11/Xlib.h>
+#include <X11/keysym.h>
 #include <X11/extensions/Xinerama.h>
 
 #define LENGTH(X)   ( sizeof X / sizeof X[0] )
@@ -19,16 +20,25 @@ struct Client {
 };
 
 typedef struct {
-    int x;
-    int y;
-    int width;
-    int height;
+    unsigned int mod;
+    KeySym keysym;
+    void (*func)(void);
+} Key;
+
+typedef struct {
+    unsigned int x;
+    unsigned int y;
+    unsigned int width;
+    unsigned int height;
     Client *clients;
 } Monitor;
 
+static void assign_keys(void);
 static void clear_up(void);
-static Monitor create_mon(int x, int y, int w, int h);
+static Monitor create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
 static void errout(char *msg);
+static void ex_focus_monitor_left(void);
+static void ex_focus_monitor_right(void);
 static Client* find_client(Window w);
 static void init(void);
 static void maprequest(XEvent *e);
@@ -60,9 +70,17 @@ static Window root;
 static Monitor *mons;
 static int running;
 static int nummons;
-static int currmon;
+static unsigned int currmon;
 
 #include "config.h"
+
+static void
+assign_keys(void) {
+    unsigned int i;
+    for (i = 0; i < LENGTH(keys); ++i) {
+
+    }
+}
 
 static void
 clear_up(void) {
@@ -70,7 +88,7 @@ clear_up(void) {
 }
 
 static Monitor
-create_mon(int x, int y, int w, int h) {
+create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h) {
     Monitor m;
 
     m.x = x;
@@ -90,9 +108,19 @@ errout(char* msg) {
     exit(1);
 }
 
+static void
+ex_focus_monitor_left(void) {
+
+}
+
+static void
+ex_focus_monitor_right(void) {
+
+}
+
 static Client*
 find_client(Window w) {
-    int i;
+    unsigned int i;
     Client *c;
 
     for (i = 0; i < nummons; ++i)
@@ -148,7 +176,7 @@ nohandler(XEvent *e) {
 
 static void
 remove_client(Client *c) {
-    int i;
+    unsigned int i;
 
     /* Adjust the head of our monitors is necessary */
     for (i = 0; i < nummons; ++i) {
@@ -170,7 +198,7 @@ static void
 init(void) {
     XineramaScreenInfo *info;
     XSetWindowAttributes wa;
-    int i;
+    unsigned int i;
 
     dpy = XOpenDisplay(NULL);
     if (!dpy)
@@ -196,6 +224,8 @@ init(void) {
 
     running = 1;
     XSync(dpy, False);
+
+    assign_keys();
 }
 
 static void

@@ -1,5 +1,5 @@
 CC=gcc
-FLAGS=--std=c99 -Wall --pedantic
+FLAGS=--std=c99 -Wall --pedantic -O2
 LIBS=-lX11 -lXinerama
 
 all: exn.c config.h
