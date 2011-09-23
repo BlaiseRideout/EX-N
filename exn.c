@@ -81,11 +81,13 @@ static int currmon;
 
 static void
 adjust_focus(void) {
-    if (!mons[currmon].clients)
+    Monitor *m = &mons[currmon];
+
+    if (!m->clients)
         return;
 
-    XRaiseWindow(dpy, mons[currmon].clients->win);
-    XSetInputFocus(dpy, mons[currmon].clients->win, RevertToPointerRoot, CurrentTime);
+    XRaiseWindow(dpy, m->clients->win);
+    XSetInputFocus(dpy, m->clients->win, RevertToPointerRoot, CurrentTime);
 }
 
 static void
@@ -169,10 +171,12 @@ ex_focus_monitor_up(void) {
 
 static void
 ex_kill_client(void) {
-    if(!mons[currmon].clients)
+    Monitor *m = &mons[currmon];
+
+    if(!m->clients)
         return;
 
-    XDestroyWindow(dpy, mons[currmon].clients->win);
+    XDestroyWindow(dpy, m->clients->win);
 }
 
 static Client*
@@ -244,6 +248,7 @@ static void
 maprequest(XEvent *e) {
     XMapRequestEvent *ev;
     XWindowAttributes wa;
+    Monitor *m;
     Client *c;
 
     ev = &e->xmaprequest;
@@ -253,21 +258,22 @@ maprequest(XEvent *e) {
         return;
 
     c = new_client(ev->window);
+    m = &mons[currmon];
 
-    if (mons[currmon].clients) {
-        c->next = mons[currmon].clients;
-        mons[currmon].clients->prev = c;
+    if (m->clients) {
+        c->next = m->clients;
+        m->clients->prev = c;
     }
     else
         c->next = NULL;
-    mons[currmon].clients = c;
+    m->clients = c;
 
     printf("Being asked to map window %d\n", (int)ev->window);
 
-    if (mons[currmon].clients)
+    if (m->clients)
         printf("Monitor %d now has client %d\n", currmon, (int)ev->window);
 
-    XMoveResizeWindow(dpy, c->win, mons[currmon].x, mons[currmon].y, mons[currmon].width, mons[currmon].height);
+    XMoveResizeWindow(dpy, c->win, m->x, m->y, m->width, m->height);
     XMapWindow(dpy, c->win);
     XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
 }
