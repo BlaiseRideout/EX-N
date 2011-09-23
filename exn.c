@@ -38,10 +38,11 @@ static void assign_keys(void);
 static void clear_up(void);
 static Monitor create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
 static void errout(char *msg);
-static void ex_focus_monitor_left(void);
-static void ex_focus_monitor_right(void);
+static void ex_focus_monitor_down(void);
+static void ex_focus_monitor_up(void);
 static Client* find_client(Window w);
 static void init(void);
+static void keypress(XEvent *e);
 static void maprequest(XEvent *e);
 static Client* new_client(Window w);
 static void nohandler(XEvent *e);
@@ -58,7 +59,7 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[EnterNotify] = nohandler,
 	[Expose] = nohandler,
 	[FocusIn] = nohandler,
-	[KeyPress] = nohandler,
+	[KeyPress] = keypress,
 	[MappingNotify] = nohandler,
 	[MapRequest] = maprequest,
 	[PropertyNotify] = nohandler,
@@ -71,7 +72,7 @@ static Window root;
 static Monitor *mons;
 static int running;
 static int nummons;
-static unsigned int currmon;
+static int currmon;
 
 #include "config.h"
 
@@ -87,8 +88,13 @@ adjust_focus(void) {
 static void
 assign_keys(void) {
     unsigned int i;
-    for (i = 0; i < LENGTH(keys); ++i) {
+    /* unsigned int modifiers[] = { 0, LockMask, numlockmask, numlockmask | Lockmask }; */
+    KeyCode code;
 
+    for (i = 0; i < LENGTH(keys); ++i) {
+        code = XKeysymToKeycode(dpy, keys[i].keysym);
+        if (code)
+            XGrabKey(dpy, code, keys[i].mod, root, True, GrabModeAsync, GrabModeAsync);
     }
 }
 
@@ -119,13 +125,21 @@ errout(char* msg) {
 }
 
 static void
-ex_focus_monitor_left(void) {
+ex_focus_monitor_down(void) {
+    currmon--;
+    if (currmon < 0)
+        currmon = 0;
 
+    adjust_focus();
 }
 
 static void
-ex_focus_monitor_right(void) {
+ex_focus_monitor_up(void) {
+    currmon++;
+    if (currmon > nummons)
+        currmon = nummons;
 
+    adjust_focus();
 }
 
 static Client*
@@ -139,6 +153,25 @@ find_client(Window w) {
                 return c;
 
     return NULL;
+}
+
+static void
+keypress(XEvent *e) {
+    unsigned int i;
+    KeySym keysym;
+    XKeyEvent *ev;
+
+    ev = &e->xkey;
+    keysym = XKeycodeToKeysym(dpy, (KeyCode)ev->keycode, 0);
+
+    for (i = 0; i < LENGTH(keys); ++i) {
+        if (keysym == keys[i].keysym) {
+            if (keys[i].func) {
+                keys[i].func();
+                return;
+            }
+        }
+    }
 }
 
 static void
