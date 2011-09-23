@@ -37,6 +37,7 @@ static void adjust_focus(void);
 static void assign_keys(void);
 static void clear_up(void);
 static Monitor create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
+static void destroynotify(XEvent *e);
 static void errout(char *msg);
 static void ex_focus_monitor_down(void);
 static void ex_focus_monitor_up(void);
@@ -55,7 +56,7 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[ClientMessage] = nohandler,
 	[ConfigureRequest] = nohandler,
 	[ConfigureNotify] = nohandler,
-	[DestroyNotify] = nohandler,
+	[DestroyNotify] = destroynotify,
 	[EnterNotify] = nohandler,
 	[Expose] = nohandler,
 	[FocusIn] = nohandler,
@@ -115,6 +116,21 @@ create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h) {
     m.clients = NULL;
 
     return m;
+}
+
+static void
+destroynotify(XEvent *e) {
+    Client *c;
+    XDestroyWindowEvent *ev;
+    
+    ev = &e->xdestroywindow;
+    c = find_client(ev->window);
+    if (!c) {
+        puts("Asked to destroy a non-existing window!");
+        return;
+    }
+
+    remove_client(c);
 }
 
 static void
@@ -183,6 +199,8 @@ maprequest(XEvent *e) {
 
     ev = &e->xmaprequest;
     if(!XGetWindowAttributes(dpy, ev->window, &wa))
+        return;
+    if(wa.override_redirect)
         return;
 
     m = &mons[currmon];
