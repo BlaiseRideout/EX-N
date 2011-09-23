@@ -76,13 +76,24 @@ static Monitor *mons;
 static int running;
 static int nummons;
 static int currmon;
+static Atom msgtype;
+static Atom killmsg;
 
 #include "config.h"
 
 static void
 adjust_focus(void) {
+    Window w;
+    int i;
+
     if (!mons[currmon].clients)
         return;
+
+    XGetInputFocus(dpy, &w, &i);
+    if (w == mons[currmon].clients->win)
+        return;
+
+    printf("Shifting focus from %d to %d\n", (int)w, (int)mons[currmon].clients->win);
 
     XRaiseWindow(dpy, mons[currmon].clients->win);
     XSetInputFocus(dpy, mons[currmon].clients->win, RevertToPointerRoot, CurrentTime);
@@ -161,8 +172,8 @@ ex_focus_monitor_down(void) {
 static void
 ex_focus_monitor_up(void) {
     currmon++;
-    if (currmon > nummons)
-        currmon = nummons;
+    if (currmon >= nummons)
+        currmon = nummons - 1;
 
     adjust_focus();
 }
@@ -170,16 +181,13 @@ ex_focus_monitor_up(void) {
 static void
 ex_kill_client(void) {
     XEvent ev;
-    Atom killmsg;
 
     if(!mons[currmon].clients)
         return;
 
-    killmsg = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-
     ev.type = ClientMessage;
     ev.xclient.window = mons[currmon].clients->win;
-    ev.xclient.message_type = XInternAtom(dpy, "WM_PROTOCOLS", False);
+    ev.xclient.message_type = msgtype;
     ev.xclient.format = 32;
     ev.xclient.data.l[0] = killmsg;
     ev.xclient.data.l[1] = CurrentTime;
@@ -206,8 +214,46 @@ find_client(Window w) {
             printf("Client window: %d\n", (int)c->win);
         }
     }
+    /* Debug stuff ends */
 
     return NULL;
+}
+
+static void
+init(void) {
+    XineramaScreenInfo *info;
+    XSetWindowAttributes wa;
+    unsigned int i;
+
+    dpy = XOpenDisplay(NULL);
+    if (!dpy)
+        errout("EX^N: Unable to open X display!");
+
+    screen = DefaultScreen(dpy);
+    root = RootWindow(dpy, screen);
+    currmon = 0;
+
+    /* Handle Xinerama screen loading */
+    info = XineramaQueryScreens(dpy, &nummons);
+    mons = safe_malloc(nummons * sizeof(Monitor), "Failed to allocate memory for monitors");
+    for (i = 0; i < nummons; ++i)
+        mons[i] = create_mon(info[i].x_org, info[i].y_org, info[i].width, info[i].height);
+    XFree(info);
+
+    msgtype = XInternAtom(dpy, "WM_PROTOCOLS", False);
+    killmsg = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+ 
+    wa.cursor = XCreateFontCursor(dpy, XC_left_ptr);
+    wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask|ButtonPressMask
+        |EnterWindowMask|LeaveWindowMask|StructureNotifyMask
+        |PropertyChangeMask;
+    XChangeWindowAttributes(dpy, root, CWEventMask|CWCursor, &wa);
+    XSelectInput(dpy, root, wa.event_mask);
+
+    running = 1;
+    XSync(dpy, False);
+
+    assign_keys();
 }
 
 static void
@@ -219,14 +265,13 @@ keypress(XEvent *e) {
     ev = &e->xkey;
     keysym = XKeycodeToKeysym(dpy, (KeyCode)ev->keycode, 0);
 
-    for (i = 0; i < LENGTH(keys); ++i) {
-        if (keysym == keys[i].keysym) {
-            if (keys[i].func) {
-                keys[i].func();
-                return;
-            }
-        }
-    }
+    for (i = 0; i < LENGTH(keys); ++i)
+        if (keysym == keys[i].keysym)
+            if (keys[i].mod == ev->state)
+                if (keys[i].func) {
+                    keys[i].func();
+                    return;
+                }
 }
 
 static void
@@ -296,40 +341,6 @@ remove_client(Client *c) {
     adjust_focus();
 
     free(c);
-}
-
-static void
-init(void) {
-    XineramaScreenInfo *info;
-    XSetWindowAttributes wa;
-    unsigned int i;
-
-    dpy = XOpenDisplay(NULL);
-    if (!dpy)
-        errout("EX^N: Unable to open X display!");
-
-    screen = DefaultScreen(dpy);
-    root = RootWindow(dpy, screen);
-    currmon = 0;
-
-    /* Handle Xinerama screen loading */
-    info = XineramaQueryScreens(dpy, &nummons);
-    mons = safe_malloc(nummons * sizeof(Monitor), "Failed to allocate memory for monitors");
-    for (i = 0; i < nummons; ++i)
-        mons[i] = create_mon(info[i].x_org, info[i].y_org, info[i].width, info[i].height);
-    XFree(info);
-
-    wa.cursor = XCreateFontCursor(dpy, XC_left_ptr);
-    wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask|ButtonPressMask
-        |EnterWindowMask|LeaveWindowMask|StructureNotifyMask
-        |PropertyChangeMask;
-    XChangeWindowAttributes(dpy, root, CWEventMask|CWCursor, &wa);
-    XSelectInput(dpy, root, wa.event_mask);
-
-    running = 1;
-    XSync(dpy, False);
-
-    assign_keys();
 }
 
 static void
