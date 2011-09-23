@@ -76,24 +76,13 @@ static Monitor *mons;
 static int running;
 static int nummons;
 static int currmon;
-static Atom msgtype;
-static Atom killmsg;
 
 #include "config.h"
 
 static void
 adjust_focus(void) {
-    Window w;
-    int i;
-
     if (!mons[currmon].clients)
         return;
-
-    XGetInputFocus(dpy, &w, &i);
-    if (w == mons[currmon].clients->win)
-        return;
-
-    printf("Shifting focus from %d to %d\n", (int)w, (int)mons[currmon].clients->win);
 
     XRaiseWindow(dpy, mons[currmon].clients->win);
     XSetInputFocus(dpy, mons[currmon].clients->win, RevertToPointerRoot, CurrentTime);
@@ -180,18 +169,10 @@ ex_focus_monitor_up(void) {
 
 static void
 ex_kill_client(void) {
-    XEvent ev;
-
     if(!mons[currmon].clients)
         return;
 
-    ev.type = ClientMessage;
-    ev.xclient.window = mons[currmon].clients->win;
-    ev.xclient.message_type = msgtype;
-    ev.xclient.format = 32;
-    ev.xclient.data.l[0] = killmsg;
-    ev.xclient.data.l[1] = CurrentTime;
-    XSendEvent(dpy, mons[currmon].clients->win, False, NoEventMask, &ev);
+    XDestroyWindow(dpy, mons[currmon].clients->win);
 }
 
 static Client*
@@ -240,9 +221,6 @@ init(void) {
         mons[i] = create_mon(info[i].x_org, info[i].y_org, info[i].width, info[i].height);
     XFree(info);
 
-    msgtype = XInternAtom(dpy, "WM_PROTOCOLS", False);
-    killmsg = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
- 
     wa.cursor = XCreateFontCursor(dpy, XC_left_ptr);
     wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask|ButtonPressMask
         |EnterWindowMask|LeaveWindowMask|StructureNotifyMask
