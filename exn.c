@@ -185,18 +185,6 @@ find_client(Window w) {
             if (c->win == w)
                 return c;
 
-    /* Debug stuff begins */
-    printf("find_client faild to match up window %d\n", (int)w);
-    puts("Available windows are:");
-
-    for (i = 0; i < nummons; ++i) {
-        printf("Monitor %d:\n", i);
-        for (c = mons[i].clients; c; c = c->next) {
-            printf("Client window: %d\n", (int)c->win);
-        }
-    }
-    /* Debug stuff ends */
-
     return NULL;
 }
 
@@ -326,7 +314,7 @@ run(void) {
     XEvent ev;
     while(running && !XNextEvent(dpy, &ev)) {
         if(handler[ev.type])
-            handler[ev.type](&ev); /* call handler */
+            handler[ev.type](&ev);
     }
 }
 
