@@ -251,12 +251,19 @@ maprequest(XEvent *e) {
     Monitor *m;
     Client *c;
 
+    /* Don't manage if the window doesn't want to be managed */
     ev = &e->xmaprequest;
     if(!XGetWindowAttributes(dpy, ev->window, &wa))
         return;
     if(wa.override_redirect)
         return;
 
+    /* Don't manage if the window is already attached to a client */
+    c = find_client(ev->window);
+    if (c)
+        return;
+
+    /* Manage the new window */
     c = new_client(ev->window);
     m = &mons[currmon];
 
