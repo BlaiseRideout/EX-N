@@ -38,14 +38,16 @@ static void adjust_focus(void);
 static void start_stuff(const char *name);
 static void next_window(void);
 static void prev_window(void);
+static void win_prev_mon(void);
+static void win_next_mon(void);
 static void assign_keys(void);
 static void clear_up(void);
 static Monitor create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
 static void destroynotify(XEvent *e);
 static void errout(char *msg);
 static void ex_end_session(void);
-static void ex_focus_prev_monitor(void);
-static void ex_focus_next_monitor(void);
+static void ex_focus_prev_mon(void);
+static void ex_focus_next_mon(void);
 static void ex_kill_client(void);
 static Client* find_client(Window w);
 static void init(void);
@@ -155,6 +157,66 @@ prev_window(void) {
 }
 
 static void
+win_prev_mon(void) {
+    Monitor *m;
+    Client *c;
+
+    m = &mons[currmon];
+
+    if(!m->clients)
+        return;
+
+    c = new_client(m->clients->win);
+    remove_client(m->clients);
+
+    ex_focus_prev_mon();
+
+    m = &mons[currmon];
+
+    if(m->clients) {
+        c->next = m->clients;
+        m->clients->prev = c;
+    }
+    else
+        c->next = NULL;
+    m->clients = c;
+
+    XMoveResizeWindow(dpy, c->win, m->x, m->y, m->width, m->height);
+    XMapWindow(dpy, c->win);
+    adjust_focus();
+}
+
+static void
+win_next_mon(void) {
+    Monitor *m;
+    Client *c;
+
+    m = &mons[currmon];
+
+    if(!m->clients)
+        return;
+
+    c = new_client(m->clients->win);
+    remove_client(m->clients);
+
+    ex_focus_next_mon();
+
+    m = &mons[currmon];
+
+    if(m->clients) {
+        c->next = m->clients;
+        m->clients->prev = c;
+    }
+    else
+        c->next = NULL;
+    m->clients = c;
+
+    XMoveResizeWindow(dpy, c->win, m->x, m->y, m->width, m->height);
+    XMapWindow(dpy, c->win);
+    adjust_focus();
+}
+
+static void
 assign_keys(void) {
     unsigned int i;
     /* unsigned int modifiers[] = { 0, LockMask, numlockmask, numlockmask | Lockmask }; */
@@ -216,7 +278,7 @@ ex_end_session(void) {
 }
 
 static void
-ex_focus_prev_monitor(void) {
+ex_focus_prev_mon(void) {
     currmon--;
     if (currmon < 0)
         currmon = nummons - 1;
@@ -225,7 +287,7 @@ ex_focus_prev_monitor(void) {
 }
 
 static void
-ex_focus_next_monitor(void) {
+ex_focus_next_mon(void) {
     currmon++;
     if (currmon >= nummons)
         currmon = 0;
