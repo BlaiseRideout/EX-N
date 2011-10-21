@@ -30,10 +30,7 @@ typedef struct {
 } Key;
 
 typedef struct {
-    unsigned int x;
-    unsigned int y;
-    unsigned int width;
-    unsigned int height;
+    unsigned int x, y, width, height;
     Client *clients[numspaces];
 } Monitor;
 
@@ -47,6 +44,8 @@ static void next_space(void);
 static void prev_space(void);
 static void win_next_space(void);
 static void win_prev_space(void);
+static void hide(Monitor *m);
+static void show(Monitor *m);
 static void assign_keys(void);
 static void clear_up(void);
 static Monitor create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
@@ -82,14 +81,15 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[UnmapNotify] = unmapnotify
 };
 
+static unsigned int tw, th;
 static Display *dpy;
 static int screen;
 static Window root;
 static Monitor *mons;
-static int running;
+static char running;
 static int nummons;
 static int currmon;
-static int curspace;
+static unsigned int curspace;
 
 #include "config.h"
 
@@ -226,20 +226,78 @@ win_next_mon(void) {
 
 static void
 next_space(void) {
+    unsigned int i;
+
+    for(i = 0; i < nummons; ++i)
+          hide(&mons[i]);
+
     curspace++;
     if (curspace >= numspaces)
         curspace = 0;
+
+    for(i = 0; i < nummons; ++i)
+        show(&mons[i]);
 
     adjust_focus();
 }
 
 static void
 prev_space(void) {
+    unsigned int i;
+
+    for(i = 0; i < nummons; ++i)
+        hide(&mons[i]);
+
     curspace--;
     if (curspace < 0)
         curspace = numspaces - 1;
 
+    for(i = 0; i < nummons; ++i)
+        show(&mons[i]);
+
     adjust_focus();
+}
+
+static void
+show(Monitor *m) {
+    Client *c;
+
+    if(!m)
+        return;
+
+    c = m->clients[curspace];
+
+    if(!c)
+        return;
+
+    while(c->next)
+        c = c->next;
+
+    while(c) {
+        XMoveWindow(dpy, c->win, m->x, m->y);
+        c = c->prev;
+    }
+}
+
+static void
+hide(Monitor *m) {
+    Client *c;
+
+    if(!m)
+        return;
+
+    c = m->clients[curspace];
+
+    if(!c)
+        return;
+
+    while(c->next)
+        c = c->next;
+
+    while(c) {
+        XMoveWindow(dpy, c->win, tw * 2, th * 2);
+        c = c->prev;
+    }
 }
 
 static void
@@ -329,6 +387,9 @@ create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h) {
     m.width = w;
     m.height = h;
 
+    tw += w;
+    th += h;
+
     for(int i = 0; i < numspaces; ++i)
         m.clients[i] = NULL;
 
@@ -394,13 +455,22 @@ ex_kill_client(void) {
 
 static Client*
 find_client(Window w) {
-    unsigned int i;
+    unsigned int i, j;
     Client *c;
 
-    for (i = 0; i < nummons; ++i)
-        for (c = mons[i].clients[curspace]; c; c = c->next)
-            if (c->win == w)
-                return c;
+    for (i = 0; i < nummons; ++i) {
+        for(j = 0; j < numspaces; ++j) {
+            c = mons[i].clients[j];
+            if(c)
+                while(c->prev)
+                    c = c->prev;
+            while (c) {
+                if (c->win == w)
+                    return c;
+                c = c->next;
+            }
+        }
+    }
 
     return NULL;
 }
