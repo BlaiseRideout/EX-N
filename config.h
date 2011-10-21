@@ -12,8 +12,8 @@ static Key keys[] = {
 
     { Mod1Mask|ControlMask,           XK_Right,           next_space },
     { Mod1Mask|ControlMask,           XK_Left,            prev_space },
-    { Mod1Mask|ControlMask|ShiftMask, XK_Right,           win_next_mon },
-    { Mod1Mask|ControlMask|ShiftMask, XK_Left,            win_prev_mon },
+    { Mod1Mask|ControlMask|ShiftMask, XK_Right,           win_next_space },
+    { Mod1Mask|ControlMask|ShiftMask, XK_Left,            win_prev_space },
 
 
     { MODKEY,                         XK_q,               ex_kill_client },
