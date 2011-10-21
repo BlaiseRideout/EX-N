@@ -44,8 +44,8 @@ static Monitor create_mon(unsigned int x, unsigned int y, unsigned int w, unsign
 static void destroynotify(XEvent *e);
 static void errout(char *msg);
 static void ex_end_session(void);
-static void ex_focus_monitor_down(void);
-static void ex_focus_monitor_up(void);
+static void ex_focus_prev_monitor(void);
+static void ex_focus_next_monitor(void);
 static void ex_kill_client(void);
 static Client* find_client(Window w);
 static void init(void);
@@ -216,19 +216,19 @@ ex_end_session(void) {
 }
 
 static void
-ex_focus_monitor_down(void) {
+ex_focus_prev_monitor(void) {
     currmon--;
     if (currmon < 0)
-        currmon = 0;
+        currmon = nummons - 1;
 
     adjust_focus();
 }
 
 static void
-ex_focus_monitor_up(void) {
+ex_focus_next_monitor(void) {
     currmon++;
     if (currmon >= nummons)
-        currmon = nummons - 1;
+        currmon = 0;
 
     adjust_focus();
 }

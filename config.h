@@ -5,8 +5,8 @@ static void term(void)    { start_stuff("urxvt"); }
 static void browser(void) { start_stuff("chromium"); }
 
 static Key keys[] = {
-    { MODKEY,               XK_Right,           ex_focus_monitor_up },
-    { MODKEY,               XK_Left,            ex_focus_monitor_down },
+    { MODKEY,               XK_Right,           ex_focus_next_monitor },
+    { MODKEY,               XK_Left,            ex_focus_prev_monitor },
     { MODKEY,               XK_q,               ex_kill_client },
     { MODKEY|ShiftMask,     XK_q,               ex_end_session },
     { MODKEY,               XK_Tab,             next_window },
