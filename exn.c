@@ -7,12 +7,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <X11/cursorfont.h>
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <X11/extensions/Xinerama.h>
 
 #define LENGTH(X)   ( sizeof X / sizeof X[0] )
+
+#define numspaces 4
 
 typedef struct Client Client;
 struct Client {
@@ -31,7 +34,7 @@ typedef struct {
     unsigned int y;
     unsigned int width;
     unsigned int height;
-    Client *clients;
+    Client *clients[numspaces];
 } Monitor;
 
 static void adjust_focus(void);
@@ -40,6 +43,8 @@ static void next_window(void);
 static void prev_window(void);
 static void win_prev_mon(void);
 static void win_next_mon(void);
+static void next_space(void);
+static void prev_space(void);
 static void assign_keys(void);
 static void clear_up(void);
 static Monitor create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
@@ -82,6 +87,7 @@ static Monitor *mons;
 static int running;
 static int nummons;
 static int currmon;
+static int curspace;
 
 #include "config.h"
 
@@ -89,11 +95,11 @@ static void
 adjust_focus(void) {
     Monitor *m = &mons[currmon];
 
-    if (!m->clients)
+    if (!m->clients[curspace])
         return;
 
-    XRaiseWindow(dpy, m->clients->win);
-    XSetInputFocus(dpy, m->clients->win, RevertToPointerRoot, CurrentTime);
+    XRaiseWindow(dpy, m->clients[curspace]->win);
+    XSetInputFocus(dpy, m->clients[curspace]->win, RevertToPointerRoot, CurrentTime);
 }
 
 static void
@@ -115,8 +121,8 @@ next_window(void) {
 
     m = &mons[currmon];
 
-    if(m->clients) {
-        c = m->clients;
+    if(m->clients[curspace]) {
+        c = m->clients[curspace];
 
         if(c->next)
             c = c->next;
@@ -126,7 +132,7 @@ next_window(void) {
         }
 
         if(c)
-            m->clients = c;
+            m->clients[curspace] = c;
     }
 
     adjust_focus();
@@ -139,8 +145,8 @@ prev_window(void) {
 
     m = &mons[currmon];
 
-    if(m->clients) {
-        c = m->clients;
+    if(m->clients[curspace]) {
+        c = m->clients[curspace];
 
         if(c->prev)
             c = c->prev;
@@ -150,7 +156,7 @@ prev_window(void) {
         }
 
         if(c)
-            m->clients = c;
+            m->clients[curspace] = c;
     }
 
     adjust_focus();
@@ -163,23 +169,23 @@ win_prev_mon(void) {
 
     m = &mons[currmon];
 
-    if(!m->clients)
+    if(!m->clients[curspace])
         return;
 
-    c = new_client(m->clients->win);
-    remove_client(m->clients);
+    c = new_client(m->clients[curspace]->win);
+    remove_client(m->clients[curspace]);
 
     ex_focus_prev_mon();
 
     m = &mons[currmon];
 
-    if(m->clients) {
-        c->next = m->clients;
-        m->clients->prev = c;
+    if(m->clients[curspace]) {
+        c->next = m->clients[curspace];
+        m->clients[curspace]->prev = c;
     }
     else
         c->next = NULL;
-    m->clients = c;
+    m->clients[curspace] = c;
 
     XMoveResizeWindow(dpy, c->win, m->x, m->y, m->width, m->height);
     XMapWindow(dpy, c->win);
@@ -193,26 +199,44 @@ win_next_mon(void) {
 
     m = &mons[currmon];
 
-    if(!m->clients)
+    if(!m->clients[curspace])
         return;
 
-    c = new_client(m->clients->win);
-    remove_client(m->clients);
+    c = new_client(m->clients[curspace]->win);
+    remove_client(m->clients[curspace]);
 
     ex_focus_next_mon();
 
     m = &mons[currmon];
 
-    if(m->clients) {
-        c->next = m->clients;
-        m->clients->prev = c;
+    if(m->clients[curspace]) {
+        c->next = m->clients[curspace];
+        m->clients[curspace]->prev = c;
     }
     else
         c->next = NULL;
-    m->clients = c;
+    m->clients[curspace] = c;
 
     XMoveResizeWindow(dpy, c->win, m->x, m->y, m->width, m->height);
     XMapWindow(dpy, c->win);
+    adjust_focus();
+}
+
+static void
+next_space(void) {
+    curspace++;
+    if (curspace >= numspaces)
+        curspace = 0;
+
+    adjust_focus();
+}
+
+static void
+prev_space(void) {
+    curspace--;
+    if (curspace < 0)
+        curspace = numspaces - 1;
+
     adjust_focus();
 }
 
@@ -243,7 +267,8 @@ create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h) {
     m.width = w;
     m.height = h;
 
-    m.clients = NULL;
+    for(int i = 0; i < numspaces; ++i)
+        m.clients[i] = NULL;
 
     return m;
 }
@@ -299,10 +324,10 @@ static void
 ex_kill_client(void) {
     Monitor *m = &mons[currmon];
 
-    if(!m->clients)
+    if(!m->clients[curspace])
         return;
 
-    XDestroyWindow(dpy, m->clients->win);
+    XDestroyWindow(dpy, m->clients[curspace]->win);
 }
 
 static Client*
@@ -311,7 +336,7 @@ find_client(Window w) {
     Client *c;
 
     for (i = 0; i < nummons; ++i)
-        for (c = mons[i].clients; c; c = c->next)
+        for (c = mons[i].clients[curspace]; c; c = c->next)
             if (c->win == w)
                 return c;
 
@@ -330,7 +355,7 @@ init(void) {
 
     screen = DefaultScreen(dpy);
     root = RootWindow(dpy, screen);
-    currmon = 0;
+    currmon = 0, curspace = 0;
 
     /* Handle Xinerama screen loading */
     info = XineramaQueryScreens(dpy, &nummons);
@@ -395,17 +420,17 @@ maprequest(XEvent *e) {
     c = new_client(ev->window);
     m = &mons[currmon];
 
-    if (m->clients) {
-        c->next = m->clients;
-        m->clients->prev = c;
+    if (m->clients[curspace]) {
+        c->next = m->clients[curspace];
+        m->clients[curspace]->prev = c;
     }
     else
         c->next = NULL;
-    m->clients = c;
+    m->clients[curspace] = c;
 
     printf("Being asked to map window %d\n", (int)ev->window);
 
-    if (m->clients)
+    if (m->clients[curspace])
         printf("Monitor %d now has client %d\n", currmon, (int)ev->window);
 
     XMoveResizeWindow(dpy, c->win, m->x, m->y, m->width, m->height);
@@ -430,15 +455,15 @@ nohandler(XEvent *e) {
 
 static void
 remove_client(Client *c) {
-    unsigned int i;
+    unsigned int i, j;
 
     /* Adjust the head of our monitors if necessary */
-    for (i = 0; i < nummons; ++i) {
-        if (mons[i].clients == c) {
-            mons[i].clients = mons[i].clients->next;
-            break;
-        }
-    }
+    for(j = 0; j < numspaces; ++j)
+        for (i = 0; i < nummons; ++i)
+            if (mons[i].clients[j] == c) {
+                mons[i].clients[j] = mons[i].clients[j]->next;
+                break;
+            }
 
     if (c->prev)
         c->prev->next = c->next;
