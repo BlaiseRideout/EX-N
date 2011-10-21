@@ -1,8 +1,9 @@
 #define MODKEY Mod4Mask
 
-static void spring(void)  { start_stuff("spring"); }
-static void term(void)    { start_stuff("urxvt"); }
-static void browser(void) { start_stuff("chromium"); }
+static void spring(void)  { start_stuff("spring",                (char *)NULL); }
+static void term(void)    { start_stuff("urxvt",                 (char *)NULL); }
+static void browser(void) { start_stuff("chromium",              (char *)NULL); }
+static void lock(void)    { start_stuff("xscreensaver-command",  "--lock"); }
 
 static Key keys[] = {
     { MODKEY,                         XK_Right,           ex_focus_next_mon },
@@ -24,4 +25,5 @@ static Key keys[] = {
     { MODKEY,                         XK_t,               term },
     { MODKEY,                         XK_r,               spring },
     { MODKEY,                         XK_w,               browser },
+    { MODKEY,                         XK_l,               lock },
 };

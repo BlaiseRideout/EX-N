@@ -38,7 +38,7 @@ typedef struct {
 } Monitor;
 
 static void adjust_focus(void);
-static void start_stuff(const char *name);
+static void start_stuff(const char *name, const char *arg);
 static void next_window(void);
 static void prev_window(void);
 static void win_prev_mon(void);
@@ -105,12 +105,12 @@ adjust_focus(void) {
 }
 
 static void
-start_stuff(const char *name) {
+start_stuff(const char *name, const char *arg) {
     if(fork() == 0) {
         if(dpy)
             close(ConnectionNumber(dpy));
         setsid();
-        execlp(name, "");
+        execlp(name, name, arg, (char *)NULL);
         fprintf(stderr, "EX^N: execlp %s failed\n", name);
         exit(0);
     }
