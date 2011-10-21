@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <X11/cursorfont.h>
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
@@ -34,6 +35,9 @@ typedef struct {
 } Monitor;
 
 static void adjust_focus(void);
+static void start_stuff(const char *name);
+static void next_window(void);
+static void prev_window(void);
 static void assign_keys(void);
 static void clear_up(void);
 static Monitor create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
@@ -91,6 +95,66 @@ adjust_focus(void) {
 }
 
 static void
+start_stuff(const char *name) {
+    if(fork() == 0) {
+        if(dpy)
+            close(ConnectionNumber(dpy));
+        setsid();
+        execlp(name, "");
+        fprintf(stderr, "EX^N: execlp %s failed\n", name);
+        exit(0);
+    }
+}
+
+static void
+next_window(void) {
+    Monitor *m;
+    Client *c;
+
+    m = &mons[currmon];
+
+    if(m->clients) {
+        c = m->clients;
+
+        if(c->next)
+            c = c->next;
+        else if(c->prev){
+            while(c->prev)
+                c = c->prev;
+        }
+
+        if(c)
+            m->clients = c;
+    }
+
+    adjust_focus();
+}
+
+static void
+prev_window(void) {
+    Monitor *m;
+    Client *c;
+
+    m = &mons[currmon];
+
+    if(m->clients) {
+        c = m->clients;
+
+        if(c->prev)
+            c = c->prev;
+        else if(c->next){
+            while(c->next)
+                c = c->next;
+        }
+
+        if(c)
+            m->clients = c;
+    }
+
+    adjust_focus();
+}
+
+static void
 assign_keys(void) {
     unsigned int i;
     /* unsigned int modifiers[] = { 0, LockMask, numlockmask, numlockmask | Lockmask }; */
@@ -126,7 +190,7 @@ static void
 destroynotify(XEvent *e) {
     Client *c;
     XDestroyWindowEvent *ev;
-    
+
     ev = &e->xdestroywindow;
     c = find_client(ev->window);
     if (!c) {
