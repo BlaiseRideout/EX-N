@@ -582,12 +582,13 @@ remove_client(Client *c) {
             }
 
 
-    if(c) {
-        if (c->prev)
-            c->prev->next = c->next;
-        if (c->next)
-            c->next->prev = c->prev;
-    }
+    if(!c)
+        return;
+
+    if (c->prev)
+        c->prev->next = c->next;
+    if (c->next)
+        c->next->prev = c->prev;
 
     adjust_focus();
 
