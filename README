@@ -10,4 +10,4 @@ placement and management is controlled with the keyboard.
 
 Requirements
 ------------
-In order to build exn you need the Xlib header files.
+In order to build exn you need the Xlib and Xinerama header files.
