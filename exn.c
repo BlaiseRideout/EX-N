@@ -89,7 +89,7 @@ static Monitor *mons;
 static char running;
 static int nummons;
 static int currmon;
-static unsigned int curspace;
+static int curspace;
 
 #include "config.h"
 
@@ -229,7 +229,7 @@ next_space(void) {
     unsigned int i;
 
     for(i = 0; i < nummons; ++i)
-          hide(&mons[i]);
+        hide(&mons[i]);
 
     curspace++;
     if (curspace >= numspaces)
