@@ -1,4 +1,5 @@
 #define MODKEY Mod4Mask
+#define WRAP 1
 
 static void spring(void)  { start_stuff("spring",                (char *)NULL); }
 static void term(void)    { start_stuff("urxvt",                 (char *)NULL); }
