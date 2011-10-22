@@ -40,6 +40,7 @@ static void next_window(void);
 static void prev_window(void);
 static void win_prev_mon(void);
 static void win_next_mon(void);
+static void win_nextprev_mon(char action);
 static void next_space(void);
 static void prev_space(void);
 static void win_next_space(void);
@@ -166,36 +167,16 @@ prev_window(void) {
 
 static void
 win_prev_mon(void) {
-    Monitor *m;
-    Client *c;
-
-    m = &mons[currmon];
-
-    if(!m->clients[curspace])
-        return;
-
-    c = new_client(m->clients[curspace]->win);
-    remove_client(m->clients[curspace]);
-
-    ex_focus_prev_mon();
-
-    m = &mons[currmon];
-
-    if(m->clients[curspace]) {
-        c->next = m->clients[curspace];
-        m->clients[curspace]->prev = c;
-    }
-    else
-        c->next = NULL;
-    m->clients[curspace] = c;
-
-    XMoveResizeWindow(dpy, c->win, m->x, m->y, m->width, m->height);
-    XMapWindow(dpy, c->win);
-    adjust_focus();
+    win_nextprev_mon(0);
 }
 
 static void
 win_next_mon(void) {
+    win_nextprev_mon(1);
+}
+
+static void
+win_nextprev_mon(char action) {
     Monitor *m;
     Client *c;
 
@@ -207,7 +188,10 @@ win_next_mon(void) {
     c = new_client(m->clients[curspace]->win);
     remove_client(m->clients[curspace]);
 
-    ex_focus_next_mon();
+    if(action)
+        ex_focus_next_mon();
+    else
+        ex_focus_prev_mon();
 
     m = &mons[currmon];
 
@@ -597,10 +581,13 @@ remove_client(Client *c) {
                 break;
             }
 
-    if (c->prev)
-        c->prev->next = c->next;
-    if (c->next)
-        c->next->prev = c->prev;
+
+    if(c) {
+        if (c->prev)
+            c->prev->next = c->next;
+        if (c->next)
+            c->next->prev = c->prev;
+    }
 
     adjust_focus();
 
