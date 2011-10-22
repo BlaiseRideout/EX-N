@@ -99,8 +99,10 @@ static void
 adjust_focus(void) {
     Monitor *m = &mons[currmon];
 
-    if (!m->clients[curspace])
+    if (!m->clients[curspace]) {
+        XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
         return;
+    }
 
     XRaiseWindow(dpy, m->clients[curspace]->win);
     XSetInputFocus(dpy, m->clients[curspace]->win, RevertToPointerRoot, CurrentTime);
