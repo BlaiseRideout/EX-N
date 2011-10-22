@@ -45,6 +45,7 @@ static void next_space(void);
 static void prev_space(void);
 static void win_next_space(void);
 static void win_prev_space(void);
+static void win_nextprev_space(char action);
 static void hide(Monitor *m);
 static void show(Monitor *m);
 static void assign_keys(void);
@@ -216,8 +217,12 @@ next_space(void) {
         hide(&mons[i]);
 
     curspace++;
-    if (curspace >= numspaces)
-        curspace = 0;
+    if (curspace >= numspaces) {
+        if(WRAP)
+            curspace = 0;
+        else
+            curspace = numspaces - 1;
+    }
 
     for(i = 0; i < nummons; ++i)
         show(&mons[i]);
@@ -233,8 +238,12 @@ prev_space(void) {
         hide(&mons[i]);
 
     curspace--;
-    if (curspace < 0)
-        curspace = numspaces - 1;
+    if (curspace < 0) {
+        if(WRAP)
+            curspace = numspaces - 1;
+        else
+            curspace = 0;
+    }
 
     for(i = 0; i < nummons; ++i)
         show(&mons[i]);
@@ -286,36 +295,16 @@ hide(Monitor *m) {
 
 static void
 win_next_space(void) {
-    Monitor *m;
-    Client *c;
-
-    m = &mons[currmon];
-
-    if(!m->clients[curspace])
-        return;
-
-    c = new_client(m->clients[curspace]->win);
-    remove_client(m->clients[curspace]);
-
-    next_space();
-
-    m = &mons[currmon];
-
-    if(m->clients[curspace]) {
-        c->next = m->clients[curspace];
-        m->clients[curspace]->prev = c;
-    }
-    else
-        c->next = NULL;
-    m->clients[curspace] = c;
-
-    XMoveResizeWindow(dpy, c->win, m->x, m->y, m->width, m->height);
-    XMapWindow(dpy, c->win);
-    adjust_focus();
+    win_nextprev_space(1);
 }
 
 static void
 win_prev_space(void) {
+    win_nextprev_space(0);
+}
+
+static void
+win_nextprev_space(char action) {
     Monitor *m;
     Client *c;
 
@@ -327,7 +316,10 @@ win_prev_space(void) {
     c = new_client(m->clients[curspace]->win);
     remove_client(m->clients[curspace]);
 
-    prev_space();
+    if(action)        //if argument is non-zero, go to next space
+        next_space();
+    else
+        prev_space();
 
     m = &mons[currmon];
 
@@ -412,8 +404,12 @@ ex_end_session(void) {
 static void
 ex_focus_prev_mon(void) {
     currmon--;
-    if (currmon < 0)
-        currmon = nummons - 1;
+    if (currmon < 0) {
+        if(WRAP)
+            currmon = nummons - 1;
+        else
+            currmon = 0;
+    }
 
     adjust_focus();
 }
@@ -421,8 +417,12 @@ ex_focus_prev_mon(void) {
 static void
 ex_focus_next_mon(void) {
     currmon++;
-    if (currmon >= nummons)
-        currmon = 0;
+    if (currmon >= nummons) {
+        if(WRAP)
+            currmon = 0;
+        else
+            currmon = nummons - 1;
+    }
 
     adjust_focus();
 }
