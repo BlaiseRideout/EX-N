@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <string.h>
 #include <X11/cursorfont.h>
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
@@ -59,6 +58,7 @@ static void ex_focus_next_mon(void);
 static void ex_kill_client(void);
 static Client* find_client(Window w);
 static void init(void);
+static void buttonpress(XEvent *e);
 static void keypress(XEvent *e);
 static void maprequest(XEvent *e);
 static Client* new_client(Window w);
@@ -68,7 +68,7 @@ static void run(void);
 static void* safe_malloc(unsigned int sz, char *errmsg);
 static void unmapnotify(XEvent *e);
 static void (*handler[LASTEvent]) (XEvent *) = {
-	[ButtonPress] = nohandler,
+	[ButtonPress] = buttonpress,
 	[ClientMessage] = nohandler,
 	[ConfigureRequest] = nohandler,
 	[ConfigureNotify] = nohandler,
@@ -349,6 +349,7 @@ assign_keys(void) {
         if (code)
             XGrabKey(dpy, code, keys[i].mod, root, True, GrabModeAsync, GrabModeAsync);
     }
+    XGrabButton(dpy, 1, MODKEY, root, True, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None);
 }
 
 static void
@@ -393,72 +394,74 @@ destroynotify(XEvent *e) {
 
 static void
 errout(char* msg) {
-    if (msg)
-        puts(msg);
-    exit(1);
+  if (msg)
+    puts(msg);
+  exit(1);
 }
 
 static void
 ex_end_session(void) {
-    running = 0;
+  running = 0;
 }
 
 static void
 ex_focus_prev_mon(void) {
-    currmon--;
-    if (currmon < 0) {
-        if(WRAP)
-            currmon = nummons - 1;
-        else
-            currmon = 0;
-    }
+  currmon--;
+  if (currmon < 0) {
+    if(WRAP)
+      currmon = nummons - 1;
+    else
+      currmon = 0;
+  }
 
-    adjust_focus();
+  adjust_focus();
 }
 
 static void
 ex_focus_next_mon(void) {
-    currmon++;
-    if (currmon >= nummons) {
-        if(WRAP)
-            currmon = 0;
-        else
-            currmon = nummons - 1;
-    }
+  currmon++;
+  if (currmon >= nummons) {
+    if(WRAP)
+      currmon = 0;
+    else
+      currmon = nummons - 1;
+  }
 
-    adjust_focus();
+  adjust_focus();
 }
 
 static void
 ex_kill_client(void) {
-    Monitor *m = &mons[currmon];
+  Monitor *m = &mons[currmon];
 
-    if(!m->clients[curspace])
-        return;
+  if(!m->clients[curspace])
+    return;
 
-    XDestroyWindow(dpy, m->clients[curspace]->win);
+  XDestroyWindow(dpy, m->clients[curspace]->win);
 }
 
 static Client*
 find_client(Window w) {
-    unsigned int i, j;
-    Client *c;
+  unsigned int i, j;
+  Monitor *m;
+  Client *c;
 
-    for (i = 0; i < nummons; ++i) {
-        for(j = 0; j < numspaces; ++j) {
-            c = mons[i].clients[j];
-            if(c)
-                while(c->prev)
-                    c = c->prev;
-            while (c) {
-                if (c->win == w)
-                    return c;
-                c = c->next;
-            }
-        }
+  for (i = 0; i < nummons; ++i) {
+    m = &mons[i];
+    for(j = 0; j < numspaces; ++j) {
+      c = m->clients[j];
+      if(c)
+        while(c->prev)
+          c = c->prev;
+      while(c) {
+        if (c->win == w)
+          return c;
+        c = c->next;
+      }
     }
+  }
 
-    return NULL;
+  return NULL;
 }
 
 static void
@@ -483,7 +486,7 @@ init(void) {
     XFree(info);
 
     wa.cursor = XCreateFontCursor(dpy, XC_left_ptr);
-    wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask|ButtonPressMask
+    wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask//|ButtonPressMask
         |EnterWindowMask|LeaveWindowMask|StructureNotifyMask
         |PropertyChangeMask;
     XChangeWindowAttributes(dpy, root, CWEventMask|CWCursor, &wa);
@@ -493,6 +496,29 @@ init(void) {
     XSync(dpy, False);
 
     assign_keys();
+}
+
+static void
+buttonpress(XEvent *e) {
+    unsigned int i;
+    XKeyEvent *ev;
+
+    ev = &e->xkey;
+
+    FILE *file = fopen("/home/aoeu/test.txt", "a");
+    fprintf(file, "Caught buttonpress\n");
+    fclose(file);
+
+    if(ev->subwindow == root)
+        return;
+
+    for(i = 0; i < nummons; ++i) {
+        if(ev->subwindow == mons[i].clients[curspace]->win) {
+            currmon = i;
+            adjust_focus();
+            break;
+        }
+    }
 }
 
 static void
@@ -517,6 +543,7 @@ static void
 maprequest(XEvent *e) {
     XMapRequestEvent *ev;
     XWindowAttributes wa;
+    XSetWindowAttributes swa;
     Monitor *m;
     Client *c;
 
@@ -554,6 +581,9 @@ maprequest(XEvent *e) {
     XMoveResizeWindow(dpy, c->win, m->x, m->y, m->width, m->height);
     XMapWindow(dpy, c->win);
     XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
+//    swa.event_mask = ButtonPressMask;
+//    XChangeWindowAttributes(dpy, c->win, CWEventMask, &swa);
+//    XSelectInput(dpy, c->win, swa.event_mask);
 }
 
 static Client*
@@ -569,6 +599,7 @@ new_client(Window w) {
 
 static void
 nohandler(XEvent *e) {
+
 }
 
 static void
@@ -579,12 +610,12 @@ remove_client(Client *c) {
     for(j = 0; j < numspaces; ++j)
         for (i = 0; i < nummons; ++i)
             if (mons[i].clients[j] == c) {
-                mons[i].clients[j] = mons[i].clients[j]->next;
+                mons[i].clients[j] = c->next;
                 break;
             }
 
 
-    if(!c)
+    if(!c->next)
         return;
 
     if (c->prev)
