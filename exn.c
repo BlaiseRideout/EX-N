@@ -394,27 +394,27 @@ destroynotify(XEvent *e) {
 
 static void
 errout(char* msg) {
-  if (msg)
-    puts(msg);
-  exit(1);
+    if (msg)
+      puts(msg);
+    exit(1);
 }
 
 static void
 ex_end_session(void) {
-  running = 0;
+    running = 0;
 }
 
 static void
 ex_focus_prev_mon(void) {
-  currmon--;
-  if (currmon < 0) {
-    if(WRAP)
-      currmon = nummons - 1;
-    else
-      currmon = 0;
-  }
+    currmon--;
+    if (currmon < 0) {
+      if(WRAP)
+        currmon = nummons - 1;
+      else
+        currmon = 0;
+   }
 
-  adjust_focus();
+    adjust_focus();
 }
 
 static void
@@ -432,36 +432,36 @@ ex_focus_next_mon(void) {
 
 static void
 ex_kill_client(void) {
-  Monitor *m = &mons[currmon];
+    Monitor *m = &mons[currmon];
 
-  if(!m->clients[curspace])
-    return;
+    if(!m->clients[curspace])
+        return;
 
-  XDestroyWindow(dpy, m->clients[curspace]->win);
+    XDestroyWindow(dpy, m->clients[curspace]->win);
 }
 
 static Client*
 find_client(Window w) {
-  unsigned int i, j;
-  Monitor *m;
-  Client *c;
+    unsigned int i, j;
+    Monitor *m;
+    Client *c;
 
-  for (i = 0; i < nummons; ++i) {
-    m = &mons[i];
-    for(j = 0; j < numspaces; ++j) {
-      c = m->clients[j];
-      if(c)
-        while(c->prev)
-          c = c->prev;
-      while(c) {
-        if (c->win == w)
-          return c;
-        c = c->next;
-      }
+    for (i = 0; i < nummons; ++i) {
+        m = &mons[i];
+        for(j = 0; j < numspaces; ++j) {
+            c = m->clients[j];
+            if(c)
+                while(c->prev)
+                    c = c->prev;
+            while(c) {
+                if (c->win == w)
+                    return c;
+                c = c->next;
+            }
+        }
     }
-  }
 
-  return NULL;
+    return NULL;
 }
 
 static void
