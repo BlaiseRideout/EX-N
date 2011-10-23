@@ -26,7 +26,7 @@ static void voldown(void) {
     start_stuff(args);
 }
 static void volmute(void) {
-    char *args[] = { "amixer", "sset", "Master", "mute", NULL };
+    char *args[] = { "amixer", "sset", "Master", "toggle", NULL };
     start_stuff(args);
 }
 
