@@ -7,3 +7,6 @@ all: exn.c config.h
 
 install:
 	cp exn /usr/bin/exn
+
+config.h:
+	cp config.def.h config.h
