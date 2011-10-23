@@ -10,6 +10,7 @@
 #include <X11/cursorfont.h>
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
+#include <X11/XF86keysym.h>
 #include <X11/extensions/Xinerama.h>
 
 #define LENGTH(X)   ( sizeof X / sizeof X[0] )
@@ -34,7 +35,7 @@ typedef struct {
 } Monitor;
 
 static void adjust_focus(void);
-static void start_stuff(const char *name, const char *arg);
+static void start_stuff(char **arg);
 static void next_window(void);
 static void prev_window(void);
 static void win_prev_mon(void);
@@ -109,12 +110,14 @@ adjust_focus(void) {
 }
 
 static void
-start_stuff(const char *name, const char *arg) {
+start_stuff(char **arg) {
+    char *name;
+    name = arg[0];
     if(fork() == 0) {
         if(dpy)
             close(ConnectionNumber(dpy));
         setsid();
-        execlp(name, name, arg, (char *)NULL);
+        execvp(name, arg);
         fprintf(stderr, "EX^N: execlp %s failed\n", name);
         exit(0);
     }
