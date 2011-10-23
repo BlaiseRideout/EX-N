@@ -53,4 +53,5 @@ static Key keys[] = {
     { MODKEY,                         XK_l,                     lock },
     { 0,                              XF86XK_AudioRaiseVolume,  volup },
     { 0,                              XF86XK_AudioLowerVolume,  voldown },
+    { 0,                              XF86XK_AudioMute,         volmute },
 };
