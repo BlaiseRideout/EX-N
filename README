@@ -5,7 +5,8 @@ for X.
     
 It is designed to be a completely different way of managing windows
 -- each monitor only displays one window at a time and all window
-placement and management is controlled with the keyboard.
+placement and management is controlled with the keyboard, with the
+exception of switching the focused window with the mouse.
 
 
 Requirements
