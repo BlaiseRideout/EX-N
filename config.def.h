@@ -25,6 +25,10 @@ static void voldown(void) {
     char *args[] = { "amixer", "sset", "Master", "5-", NULL };
     start_stuff(args);
 }
+static void volmute(void) {
+    char *args[] = { "amixer", "sset", "Master", "mute", NULL };
+    start_stuff(args);
+}
 
 static Key keys[] = {
     { MODKEY,                         XK_Right,                 ex_focus_next_mon },
