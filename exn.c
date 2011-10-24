@@ -613,13 +613,14 @@ remove_client(Client *c) {
     for(j = 0; j < numspaces; ++j)
         for (i = 0; i < nummons; ++i)
             if (mons[i].clients[j] == c) {
-                mons[i].clients[j] = c->next;
+                if(c->next)
+                    mons[i].clients[j] = c->next;
+                else if(c->prev)
+                    mons[i].clients[j] = c->prev;
+                else
+                    mons[i].clients[j] = NULL;
                 break;
             }
-
-
-    if(!c->next)
-        return;
 
     if (c->prev)
         c->prev->next = c->next;
