@@ -84,7 +84,6 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[UnmapNotify] = unmapnotify
 };
 
-static unsigned int tw, th;
 static Display *dpy;
 static int screen;
 static Window root;
@@ -369,9 +368,6 @@ create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h) {
     m.width = w;
     m.height = h;
 
-    tw += w;
-    th += h;
-
     for(int i = 0; i < numspaces; ++i)
         m.clients[i] = NULL;
 
@@ -546,7 +542,6 @@ static void
 maprequest(XEvent *e) {
     XMapRequestEvent *ev;
     XWindowAttributes wa;
-    XSetWindowAttributes swa;
     Monitor *m;
     Client *c;
 
@@ -584,9 +579,6 @@ maprequest(XEvent *e) {
     XMoveResizeWindow(dpy, c->win, m->x, m->y, m->width, m->height);
     XMapWindow(dpy, c->win);
     XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
-//    swa.event_mask = ButtonPressMask;
-//    XChangeWindowAttributes(dpy, c->win, CWEventMask, &swa);
-//    XSelectInput(dpy, c->win, swa.event_mask);
 }
 
 static Client*
