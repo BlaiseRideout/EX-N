@@ -1,3 +1,2 @@
- - Make a better way for opening programs
- - Hide windows not on current workspace better (?)
- - Clicking a window should give it focus
+ - Clicking a window without MODKEY should give it focus
+ - When MODKEY is held, current monitor focus should be highlighted

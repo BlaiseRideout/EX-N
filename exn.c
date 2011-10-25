@@ -272,7 +272,7 @@ show(Monitor *m) {
         c = c->next;
 
     while(c) {
-        XMoveWindow(dpy, c->win, m->x, m->y);
+        XMapWindow(dpy, c->win);
         c = c->prev;
     }
 }
@@ -293,7 +293,7 @@ hide(Monitor *m) {
         c = c->next;
 
     while(c) {
-        XMoveWindow(dpy, c->win, tw * 2, th * 2);
+        XUnmapWindow(dpy, c->win);
         c = c->prev;
     }
 }
