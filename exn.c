@@ -48,8 +48,6 @@ static void win_prev_space(void);
 static void win_nextprev_space(char action);
 static void hide(Monitor *m);
 static void show(Monitor *m);
-static void draw_mon_rect(void);
-static void undraw_mon_rect(void);
 static void assign_keys(void);
 static void clear_up(void);
 static Monitor create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
@@ -341,21 +339,6 @@ win_nextprev_space(char action) {
     XMoveResizeWindow(dpy, c->win, m->x, m->y, m->width, m->height);
     XMapWindow(dpy, c->win);
     adjust_focus();
-}
-
-static void
-draw_mon_rect(void) {
-    Monitor *m;
-
-    m = &mons[currmon];
-
-    XDrawRectangle(dpy, root, gc, m->x + BORDER_WIDTH / 2, m->y + BORDER_WIDTH / 2, m->width - BORDER_WIDTH, m->height - BORDER_WIDTH);
-}
-
-static void
-undraw_mon_rect(void) {
-    
-
 }
 
 static unsigned long
