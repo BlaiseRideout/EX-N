@@ -502,22 +502,16 @@ buttonpress(XEvent *e) {
     unsigned int i;
     XKeyEvent *ev;
 
-    ev = &e->xkey;
+    if(!(e && (ev = &e->xkey) && &ev->subwindow))
+      return;
 
-    FILE *file = fopen("/home/aoeu/test.txt", "a");
-    fprintf(file, "Caught buttonpress\n");
-    fclose(file);
-
-    if(ev->subwindow == root)
-        return;
-
-    for(i = 0; i < nummons; ++i) {
-        if(ev->subwindow == mons[i].clients[curspace]->win) {
-            currmon = i;
-            adjust_focus();
-            break;
-        }
-    }
+    for(i = 0; i < nummons; ++i)
+        if(mons[i].clients[curspace])
+            if(ev->subwindow == mons[i].clients[curspace]->win) {
+                currmon = i;
+                adjust_focus();
+                break;
+            }
 }
 
 static void
