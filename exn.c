@@ -48,6 +48,8 @@ static void win_prev_space(void);
 static void win_nextprev_space(char action);
 static void hide(Monitor *m);
 static void show(Monitor *m);
+static void draw_mon_rect(void);
+static void undraw_mon_rect(void);
 static void assign_keys(void);
 static void clear_up(void);
 static Monitor create_mon(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
@@ -92,6 +94,7 @@ static char running;
 static int nummons;
 static int currmon;
 static int curspace;
+static GC gc;
 
 #include "config.h"
 
@@ -341,6 +344,32 @@ win_nextprev_space(char action) {
 }
 
 static void
+draw_mon_rect(void) {
+    Monitor *m;
+
+    m = &mons[currmon];
+
+    XDrawRectangle(dpy, root, gc, m->x + BORDER_WIDTH / 2, m->y + BORDER_WIDTH / 2, m->width - BORDER_WIDTH, m->height - BORDER_WIDTH);
+}
+
+static void
+undraw_mon_rect(void) {
+    
+
+}
+
+static unsigned long
+getcolor(const char *colstr) {
+    Colormap cmap = DefaultColormap(dpy, screen);
+    XColor color;
+
+    if(!XAllocNamedColor(dpy, cmap, colstr, &color, &color))
+        errout("Cannot allocate color");
+
+    return color.pixel;
+}
+
+static void
 assign_keys(void) {
     unsigned int i;
     /* unsigned int modifiers[] = { 0, LockMask, numlockmask, numlockmask | Lockmask }; */
@@ -436,7 +465,7 @@ ex_kill_client(void) {
     if(!m->clients[curspace])
         return;
 
-    XDestroyWindow(dpy, m->clients[curspace]->win);
+    XKillClient(dpy, m->clients[curspace]->win);
 }
 
 static Client*
@@ -493,6 +522,10 @@ init(void) {
 
     running = 1;
     XSync(dpy, False);
+
+    gc = XCreateGC(dpy, root, 0, NULL);
+    XSetForeground(dpy, gc, getcolor(bordercolor));
+    XSetLineAttributes(dpy, gc, BORDER_WIDTH, LineSolid, CapButt, JoinMiter);
 
     assign_keys();
 }
