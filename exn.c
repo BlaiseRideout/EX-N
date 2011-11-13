@@ -92,7 +92,6 @@ static char running;
 static int nummons;
 static int currmon;
 static int curspace;
-static GC gc;
 
 #include "config.h"
 
@@ -341,17 +340,6 @@ win_nextprev_space(char action) {
     adjust_focus();
 }
 
-static unsigned long
-getcolor(const char *colstr) {
-    Colormap cmap = DefaultColormap(dpy, screen);
-    XColor color;
-
-    if(!XAllocNamedColor(dpy, cmap, colstr, &color, &color))
-        errout("Cannot allocate color");
-
-    return color.pixel;
-}
-
 static void
 assign_keys(void) {
     unsigned int i;
@@ -505,10 +493,6 @@ init(void) {
 
     running = 1;
     XSync(dpy, False);
-
-    gc = XCreateGC(dpy, root, 0, NULL);
-    XSetForeground(dpy, gc, getcolor(bordercolor));
-    XSetLineAttributes(dpy, gc, BORDER_WIDTH, LineSolid, CapButt, JoinMiter);
 
     assign_keys();
 }
